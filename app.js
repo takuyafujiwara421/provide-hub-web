@@ -967,35 +967,13 @@ $('#btnTheme').addEventListener('click', function () {
 // ★本番の窓口URLとは別のデプロイを使う。ここは公開リポジトリに載るので、
 //   書き込み系まで通る本番URLを外に出さないため（合言葉が無ければどちらも弾かれるが、
 //   そもそも在り処を知らせない方がよい）
-var HB_API = 'https://script.google.com/macros/s/AKfycbyPH5RnBVwC_GmADmgseF3FX_vBohTlg12qHwmuOvKROezKHbrEUbJcoS6e_pEJKog-Ug/exec';
+// ★shift-automation は無料アカウント所有なので、telekids.net でログイン中のブラウザからは
+//   直接繋げない（2026-09-04に実測）。**hub のAPIに中継してもらう。**
+//   秘密も hub 側にしか置かないので、この公開ファイルには何も載らない。
 var HB = { data: null, tab: 'watch', picked: null, loading: false };
 
 function hbCall(op, params) {
-  return new Promise(function (resolve, reject) {
-    var cb = 'hbcb_' + Math.random().toString(36).slice(2);
-    var s = document.createElement('script'), done = false;
-    var timer = setTimeout(function () {
-      if (!done) { cleanup(); reject(new Error('時間内に応答がありませんでした')); }
-    }, 45000);
-    function cleanup() {
-      done = true; clearTimeout(timer);
-      try { delete window[cb]; } catch (e) { window[cb] = undefined; }
-      if (s.parentNode) s.parentNode.removeChild(s);
-    }
-    window[cb] = function (res) {
-      cleanup();
-      if (res && res.ok) resolve(res.data === undefined ? res : res.data);
-      else reject(new Error((res && res.error) || '不明なエラー'));
-    };
-    var q = new URLSearchParams();
-    q.set('hub', op);
-    q.set('callback', cb);
-    q.set('t', S.token || '');
-    for (var k in (params || {})) if (params[k] !== undefined && params[k] !== null) q.set(k, params[k]);
-    s.src = HB_API + '?' + q.toString();
-    s.onerror = function () { if (!done) { cleanup(); reject(new Error('サーバーに接続できません')); } };
-    document.head.appendChild(s);
-  });
+  return api('hanbai.' + op, params || {});
 }
 
 function hbEsc(s) { return esc(s); }

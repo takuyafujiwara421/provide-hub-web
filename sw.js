@@ -1,7 +1,7 @@
 /* provide hub ─ Service Worker
    画面の「ガワ」だけを先に出すためのキャッシュ。データは必ずネットワークから取る
    （古い実績や古いタスクを見せるのが一番まずいため）。 */
-var CACHE = 'provide-hub-202609041437';   // ★画面を変えたら必ず上げる（古いガワが残るため）
+var CACHE = 'provide-hub-202609041447';   // ★画面を変えたら必ず上げる（古いガワが残るため）
 // ガワは index.html だけ先読みする。css/js は ?v= 付きで来るのでここに固定名を書かない
 var SHELL = ['./', './index.html', './manifest.json'];
 
