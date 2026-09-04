@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=202609041454">
+<link rel="stylesheet" href="style.css?v=202609041807">
 </head>
 <body>
 
@@ -45,6 +45,7 @@
       <button class="tab" data-view="stores">店舗</button>
       <button class="tab" data-view="members">メンバー</button>
       <button class="tab" data-view="hanbai">販売スタッフ</button>
+      <button class="tab" data-view="onboard">新人受け入れ</button>
       <button class="tab" data-view="news">トピックス</button>
     </nav>
   </header>
@@ -236,6 +237,20 @@
       <div id="hbBody"></div>
     </section>
 
+    <section class="view hidden" id="view-onboard">
+      <div class="hb-head">
+        <div>
+          <h2 class="hb-title">新人受け入れ</h2>
+          <div class="hb-sub" id="obSub">読み込み中…</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="hb-ghost" id="obAddBtn">＋ 新人を追加</button>
+          <button class="btn-link" id="obReload">最新に</button>
+        </div>
+      </div>
+      <div id="obBody"></div>
+    </section>
+
     <section class="view hidden" id="view-news">
       <div class="card">
         <div class="card-head">
@@ -320,7 +335,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=202609041454"></script>
-<script src="app.js?v=202609041454"></script>
+<script src="charts.js?v=202609041807"></script>
+<script src="app.js?v=202609041807"></script>
 </body>
 </html>

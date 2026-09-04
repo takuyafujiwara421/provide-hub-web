@@ -908,6 +908,7 @@ function switchView(v) {
   //   まだ undefined。setTimeout でひと呼吸置き、ファイルを読み終えてから走らせる。
   //   （2026-09-04に「Cannot read properties of undefined」で読み込み中のまま止まった）
   if (v === 'hanbai') setTimeout(function () { if (!HB.data) hbLoad(); }, 0);
+  if (v === 'onboard') setTimeout(function () { if (!OB.data) obLoad(); }, 0);
   location.hash = v;
 }
 document.addEventListener('click', function (ev) {
@@ -1215,3 +1216,121 @@ $$('#hbTabs .hb-tab').forEach(function (b) {
   });
 });
 $('#hbReload').addEventListener('click', function () { HB.picked = null; hbLoad(true); });
+
+/* ============================================================================
+ * 新人受け入れ（11項目のチェックリスト）  2026-09-04
+ * ----------------------------------------------------------------------------
+ * ★元データは名簿スプシの「新人スタッフ案内管理」タブそのもの。
+ *   拓矢さんが普段見ている表を正とする（二重管理は必ずズレる）。
+ * ★「済」以外の文字（例「9/9勤務開始」「依頼済（未確認）」）は**消さずに残す**。
+ *   現場のメモが情報として効いているので、チェックを外しただけで消してはいけない。
+ * ============================================================================ */
+var OB = { data: null, picked: null, loading: false };
+
+function obLoad(fresh) {
+  if (OB.loading) return;
+  OB.loading = true;
+  $('#obSub').textContent = '読み込み中…';
+  api('onboard.get', {}).then(function (d) {
+    OB.loading = false; OB.data = d; obRender();
+  }).catch(function (e) {
+    OB.loading = false;
+    $('#obSub').textContent = '読み込めませんでした';
+    $('#obBody').innerHTML = '<div class="hb-card"><div class="hb-empty">' + esc(e.message) + '</div></div>';
+  });
+}
+
+function obRender() {
+  var d = OB.data; if (!d) return;
+  var nokori = d.people.filter(function (p) { return p.done < p.total; }).length;
+  $('#obSub').textContent = d.people.length + '名　·　受け入れ途中 ' + nokori + '名　·　項目 ' + d.tasks.length + '個';
+  $('#obBody').innerHTML = OB.picked ? obDetail(OB.picked) : obList();
+  obBind();
+}
+
+function obList() {
+  var d = OB.data;
+  var yet = d.people.filter(function (p) { return p.done < p.total; });
+  var fin = d.people.filter(function (p) { return p.done >= p.total; });
+  var card = function (p) {
+    var pc = Math.round(p.done / p.total * 100);
+    var rest = p.states.filter(function (s) { return !s.done; })
+      .map(function (s) { return (d.tasks.filter(function (t) { return t.col === s.col; })[0] || {}).name; });
+    return '<div class="hb-card tap" data-ob="' + esc(p.name) + '">' +
+      '<div class="hb-row"><div><div class="hb-name">' + esc(p.name) + '</div>' +
+      '<div class="hb-meta">' + esc(p.kubun || '区分なし') + '</div></div>' +
+      '<span class="ob-count ' + (pc === 100 ? 'full' : (pc < 50 ? 'few' : '')) + '">' +
+        p.done + ' / ' + p.total + '</span></div>' +
+      '<div class="ob-prog ' + (pc === 100 ? 'full' : '') + '"><i style="width:' + pc + '%"></i></div>' +
+      (rest.length ? '<div class="ob-rest">残り：' + esc(rest.slice(0, 4).join('、')) +
+        (rest.length > 4 ? ' ほか' + (rest.length - 4) + '件' : '') + '</div>' : '') +
+      '</div>';
+  };
+  var h = '';
+  if (yet.length) h += '<div class="hb-h2">受け入れ途中（' + yet.length + '名）</div>' + yet.map(card).join('');
+  else h += '<div class="hb-card"><div class="hb-empty">受け入れ途中の人はいません。</div></div>';
+  if (fin.length) h += '<div class="hb-h2">完了（' + fin.length + '名）</div>' + fin.map(card).join('');
+  return h;
+}
+
+function obDetail(name) {
+  var d = OB.data;
+  var p = d.people.filter(function (x) { return x.name === name; })[0];
+  if (!p) return '<div class="hb-card"><div class="hb-empty">見つかりません</div></div>';
+  var pc = Math.round(p.done / p.total * 100);
+  var h = '<div style="margin-bottom:12px"><button class="hb-ghost" data-obback="1">← もどる</button></div>';
+  h += '<div class="hb-card"><div class="hb-row"><div>' +
+    '<div class="hb-name" style="font-size:21px">' + esc(p.name) + '</div>' +
+    '<div class="hb-meta">' + esc(p.kubun || '区分なし') + '</div></div>' +
+    '<span class="ob-count ' + (pc === 100 ? 'full' : (pc < 50 ? 'few' : '')) + '">' + p.done + ' / ' + p.total + '</span></div>' +
+    '<div class="ob-prog ' + (pc === 100 ? 'full' : '') + '"><i style="width:' + pc + '%"></i></div></div>';
+
+  h += '<div class="hb-h2">やること</div><div class="hb-card">';
+  p.states.forEach(function (s) {
+    var t = d.tasks.filter(function (x) { return x.col === s.col; })[0] || { name: '?' };
+    var memo = (!s.done && s.value) ? '<div class="memo">' + esc(s.value) + '</div>' : '';
+    h += '<div class="ob-task">' +
+      '<button class="ob-chk' + (s.done ? ' on' : '') + '" data-obchk="' + s.col + '">' + (s.done ? '✓' : '') + '</button>' +
+      '<div class="tt">' + esc(t.name) + memo + '</div></div>';
+  });
+  h += '</div>';
+  h += '<div class="hb-card"><div class="hb-meta">チェックを付けると「済」、外すと空欄に戻します。' +
+       'メモ（例「9/9勤務開始」）が入っている項目は、チェックするまでそのまま残ります。</div></div>';
+  return h;
+}
+
+function obBind() {
+  $$('[data-ob]').forEach(function (b) {
+    b.onclick = function () { OB.picked = b.getAttribute('data-ob');
+      window.scrollTo({ top: 0, behavior: 'smooth' }); obRender(); };
+  });
+  $$('[data-obback]').forEach(function (b) {
+    b.onclick = function () { OB.picked = null; window.scrollTo({ top: 0, behavior: 'smooth' }); obRender(); };
+  });
+  $$('[data-obchk]').forEach(function (b) {
+    b.onclick = function () {
+      var col = Number(b.getAttribute('data-obchk'));
+      var turnOn = !b.classList.contains('on');
+      b.disabled = true;
+      api('onboard.set', { name: OB.picked, col: col, value: turnOn ? '済' : '' }).then(function () {
+        var p = OB.data.people.filter(function (x) { return x.name === OB.picked; })[0];
+        var s = p.states.filter(function (x) { return x.col === col; })[0];
+        s.done = turnOn; s.value = turnOn ? '済' : '';
+        p.done = p.states.filter(function (x) { return x.done; }).length;
+        obRender(); toast(turnOn ? '済にしました' : '未に戻しました');
+      }).catch(function (e) { b.disabled = false; toast(e.message, true); });
+    };
+  });
+}
+
+$('#obReload').addEventListener('click', function () { OB.picked = null; OB.data = null; obLoad(); });
+$('#obAddBtn').addEventListener('click', function () {
+  var name = prompt('新人の氏名（フルネーム）');
+  if (!name || !name.trim()) return;
+  var kubun = prompt('区分（例：販売/キャッチャー、初期設定ヘルパー/センター）') || '';
+  toast('登録しています…');
+  api('onboard.add', { name: name.trim(), kubun: kubun.trim() }).then(function (r) {
+    OB.data = null; OB.picked = null; obLoad();
+    toast(r['既にいる'] ? 'すでに登録されています' : '追加しました');
+  }).catch(function (e) { toast(e.message, true); });
+});

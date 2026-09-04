@@ -566,3 +566,22 @@ kbd {
 .hb-ghost{background:none;border:1px solid var(--line,#e3e8f0);color:inherit;opacity:.85;
   border-radius:9px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer}
 .hb-empty{opacity:.55;font-size:13.5px;padding:18px 2px}
+
+/* ===== 新人受け入れ（2026-09-04） ===== */
+.ob-prog{height:8px;border-radius:4px;background:rgba(127,140,160,.16);overflow:hidden;margin-top:10px}
+.ob-prog i{display:block;height:100%;background:var(--accent,#4a6fa5)}
+.ob-prog.full i{background:#137333}
+.ob-count{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;
+  background:rgba(127,140,160,.14)}
+.ob-count.full{background:#e6f4ea;color:#137333}
+.ob-count.few{background:#fce8e6;color:#c5221f}
+.ob-task{display:flex;align-items:flex-start;gap:10px;padding:10px 0;
+  border-bottom:1px solid rgba(127,140,160,.12)}
+.ob-task:last-child{border-bottom:0}
+.ob-task .tt{flex:1;font-size:13.5px;line-height:1.45}
+.ob-task .memo{font-size:12px;opacity:.65;margin-top:2px}
+.ob-chk{width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--line,#d5dce7);
+  background:transparent;cursor:pointer;font:inherit;font-size:14px;line-height:1;color:#fff}
+.ob-chk.on{background:#137333;border-color:#137333}
+.ob-chk:disabled{opacity:.4}
+.ob-rest{font-size:12.5px;opacity:.75;margin-top:8px;line-height:1.5}
