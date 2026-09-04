@@ -1,7 +1,7 @@
 /* provide hub ─ Service Worker
    画面の「ガワ」だけを先に出すためのキャッシュ。データは必ずネットワークから取る
    （古い実績や古いタスクを見せるのが一番まずいため）。 */
-var CACHE = 'provide-hub-202609041449';   // ★画面を変えたら必ず上げる（古いガワが残るため）
+var CACHE = 'provide-hub-202609041454';   // ★画面を変えたら必ず上げる（古いガワが残るため）
 // ガワは index.html だけ先読みする。css/js は ?v= 付きで来るのでここに固定名を書かない
 var SHELL = ['./', './index.html', './manifest.json'];
 
@@ -21,8 +21,16 @@ self.addEventListener('fetch', function (e) {
   if (url.hostname.indexOf('google.com') >= 0) return;
   if (e.request.method !== 'GET') return;
 
+  // ★index.html は GitHub Pages が max-age=600 で返すので、ブラウザのHTTPキャッシュに
+  //   10分間ふるいものが残る。?v= を上げても**index.html自体が古い**ので効かない。
+  //   （2026-09-04に実際に踏んだ：直したのに画面が古いままだった）
+  //   画面を開くときのリクエストだけ、キャッシュを無視して取り直す。
+  var req = (e.request.mode === 'navigate')
+    ? new Request(e.request, { cache: 'reload' })
+    : e.request;
+
   e.respondWith(
-    fetch(e.request).then(function (res) {
+    fetch(req).then(function (res) {
       if (res && res.ok && url.origin === location.origin) {
         var copy = res.clone();
         caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
