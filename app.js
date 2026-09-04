@@ -904,7 +904,10 @@ function switchView(v) {
   $$('.tab').forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-view') === v); });
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (v === 'members') loadMembers();
-  if (v === 'hanbai' && !HB.data) hbLoad();   // 開いたときだけ取りに行く（起動を重くしない）
+  // ★HB の実体はこのファイルの末尾で組み立てるので、起動直後（init から呼ばれる switchView）では
+  //   まだ undefined。setTimeout でひと呼吸置き、ファイルを読み終えてから走らせる。
+  //   （2026-09-04に「Cannot read properties of undefined」で読み込み中のまま止まった）
+  if (v === 'hanbai') setTimeout(function () { if (!HB.data) hbLoad(); }, 0);
   location.hash = v;
 }
 document.addEventListener('click', function (ev) {
