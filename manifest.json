@@ -1,0 +1,21 @@
+{
+  "name": "provide hub ｜ 業務管理",
+  "short_name": "provide hub",
+  "description": "タスク・実績・店舗・メンバー・業界ニュースを1画面に束ねた社内ポータル",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#16283f",
+  "theme_color": "#16283f",
+  "lang": "ja",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "タスクを追加", "short_name": "追加", "url": "./index.html#tasks" },
+    { "name": "今月の実績", "short_name": "実績", "url": "./index.html#reports" }
+  ]
+}

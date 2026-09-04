@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16283f">
+<title>provide hub ｜ 業務管理</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="provide hub">
+<link rel="stylesheet" href="style.css?v=202609041437">
+</head>
+<body>
+
+<!-- ============ ログイン ============ -->
+<div id="login" class="login hidden">
+  <form class="login-card" id="loginForm">
+    <div class="login-logo">provide <b>hub</b></div>
+    <p class="login-sub">社内の業務管理サイト</p>
+    <label>ユーザーID<input type="text" id="loginUser" autocomplete="username" autocapitalize="none" required></label>
+    <label>PIN<input type="password" id="loginPin" autocapitalize="none" autocorrect="off" autocomplete="current-password" required></label>
+    <button type="submit" class="btn-primary btn-block">ログイン</button>
+    <p class="login-err" id="loginErr"></p>
+  </form>
+</div>
+
+<!-- ============ 本体 ============ -->
+<div id="app" class="hidden">
+
+  <header class="topbar">
+    <div class="topbar-in">
+      <div class="brand">provide <b>hub</b></div>
+      <div id="modeBadge" class="mode-badge">読み込み中…</div>
+      <div class="topbar-right">
+        <button class="icon-btn" id="btnRefresh" title="最新に更新">⟳</button>
+        <button class="icon-btn" id="btnTheme" title="表示テーマ">◐</button>
+        <span class="who" id="whoami"></span>
+      </div>
+    </div>
+    <nav class="tabbar" id="navTabs">
+      <button class="tab active" data-view="home">ホーム</button>
+      <button class="tab" data-view="tasks">タスク</button>
+      <button class="tab" data-view="reports">実績</button>
+      <button class="tab" data-view="stores">店舗</button>
+      <button class="tab" data-view="members">メンバー</button>
+      <button class="tab" data-view="hanbai">販売スタッフ</button>
+      <button class="tab" data-view="news">トピックス</button>
+    </nav>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ---------- ホーム ---------- -->
+    <section class="view" id="view-home">
+
+      <div class="grid-2">
+        <!-- 今日のタスク -->
+        <div class="card card-tasks">
+          <div class="card-head">
+            <h2>今日のタスク</h2>
+            <div class="card-actions">
+              <button class="btn-ghost" id="btnFocus">集中モード</button>
+              <button class="btn-primary btn-sm" id="btnAddTop">＋ 追加</button>
+            </div>
+          </div>
+          <div id="taskStats" class="stat-row"></div>
+          <ul class="task-list" id="todayTasks"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul>
+          <div class="card-foot"><button class="btn-link" data-view="tasks">すべてのタスクを見る →</button></div>
+        </div>
+
+        <!-- 今日の稼働 -->
+        <div class="card card-day">
+          <div class="card-head"><h2>今日の稼働</h2></div>
+          <div id="daySummary" class="day-summary"></div>
+          <ul class="event-list" id="todayEvents"></ul>
+          <div class="day-next" id="tomorrowBlock">
+            <div class="day-next-head" id="tomorrowHead"></div>
+            <ul class="event-list" id="tomorrowEvents"></ul>
+          </div>
+          <div class="next-office" id="nextOffice"></div>
+        </div>
+      </div>
+
+      <!-- ニュース＆トピックス -->
+      <div class="card card-news">
+        <div class="news-head">
+          <h2>ニュース＆トピックス</h2>
+          <div class="news-tabs" id="newsTabs">
+            <button class="ntab active" data-cat="docomo">ドコモ</button>
+            <button class="ntab" data-cat="au">au/UQ</button>
+            <button class="ntab" data-cat="softbank">SB/Y!mobile</button>
+            <button class="ntab" data-cat="rakuten">楽天</button>
+            <button class="ntab" data-cat="maker">メーカー</button>
+            <button class="ntab" data-cat="industry">業界</button>
+            <button class="ntab" data-cat="internal">社内</button>
+            <button class="ntab" data-cat="client">クライアント</button>
+          </div>
+        </div>
+        <div class="news-body" id="newsBody"></div>
+        <div class="card-foot"><button class="btn-link" data-view="news">過去のニュースを見る →</button></div>
+      </div>
+
+      <!-- 実績サマリ -->
+      <div class="card">
+        <div class="card-head">
+          <h2>今月の実績</h2>
+          <span class="muted" id="reportMonth"></span>
+        </div>
+        <div id="kpiRow" class="kpi-row"></div>
+        <div id="homeCharts" class="chart-grid"></div>
+        <div class="card-foot"><button class="btn-link" data-view="reports">実績の詳細 →</button></div>
+      </div>
+
+      <!-- 店舗管理状況 -->
+      <div class="card">
+        <div class="card-head"><h2>店舗の稼働状況</h2><span class="muted" id="attnSummary"></span></div>
+        <div id="firstVisitBanner"></div>
+        <div id="channelSummary" class="ch-summary"></div>
+        <div id="storeMini" class="store-mini"></div>
+        <div class="card-foot"><button class="btn-link" data-view="stores">店舗一覧 →</button></div>
+      </div>
+    </section>
+
+    <!-- ---------- タスク ---------- -->
+    <section class="view hidden" id="view-tasks">
+      <div class="card">
+        <div class="card-head">
+          <h2>タスク</h2>
+          <div class="card-actions">
+            <select id="taskFilter" class="select">
+              <option value="all">すべて</option>
+              <option value="overdue">期限すぎ</option>
+              <option value="high">優先度 高</option>
+              <option value="stale">止まっている</option>
+              <option value="desk">デスク作業</option>
+              <option value="field">現場・対人</option>
+            </select>
+            <button class="btn-primary btn-sm" id="btnAddTask">＋ 追加</button>
+          </div>
+        </div>
+        <ul class="task-list task-list-full" id="allTasks"></ul>
+      </div>
+    </section>
+
+    <!-- ---------- 実績 ---------- -->
+    <section class="view hidden" id="view-reports">
+      <div class="card">
+        <div class="card-head">
+          <h2>実績</h2>
+          <div class="seg" id="periodRange">
+            <button class="seg-btn" data-range="yesterday">前日</button>
+            <button class="seg-btn" data-range="lastweek">前週</button>
+            <button class="seg-btn" data-range="lastmonth">前月</button>
+            <button class="seg-btn active" data-range="thismonth">当月</button>
+          </div>
+          <span class="muted" id="reportMonth2"></span>
+        </div>
+        <div id="kpiRowFull" class="kpi-row"></div>
+        <div id="periodTops" class="chart-grid"></div>
+        <div id="reportCharts" class="chart-grid"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>店舗別の実績</h2>
+          <span class="muted" id="storeRangeEcho"></span>
+        </div>
+        <div class="seg seg-kind" id="storeKind">
+          <button class="seg-btn active" data-kind="shoki">初期設定</button>
+          <button class="seg-btn" data-kind="nokisaki">出張販売／軒先</button>
+          <button class="seg-btn" data-kind="helper">店内ヘルパー</button>
+        </div>
+        <div class="muted" id="storeRangeNote"></div>
+        <div id="storeReport" class="table-scroll"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>数値の内訳</h2></div>
+        <div id="reportTables" class="table-scroll"></div>
+      </div>
+    </section>
+
+    <!-- ---------- 店舗 ---------- -->
+    <section class="view hidden" id="view-stores">
+      <div class="card" id="firstVisitCard">
+        <div class="card-head"><h2>初入店の予定</h2><span class="muted">過去に一度も実績が無い店です</span></div>
+        <div id="firstVisitList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>店舗・クライアント稼働状況</h2>
+          <div class="card-actions">
+            <input type="text" id="storeCheckInput" class="store-check-in" placeholder="店名で初入店を調べる">
+            <button class="btn-ghost btn-sm" id="btnStoreCheck">調べる</button>
+          </div>
+        </div>
+        <div id="storeCheckResult" class="check-result"></div>
+        <div class="ch-tabs" id="chTabs">
+          <button class="chtab active" data-ch="shoki">初期設定</button>
+          <button class="chtab" data-ch="nokisaki">軒先・出張販売</button>
+          <button class="chtab" data-ch="helper">店内ヘルパー</button>
+          <button class="chtab" data-ch="all">全体</button>
+        </div>
+        <div id="chHead" class="ch-head"></div>
+        <div class="table-scroll"><table class="tbl" id="storeTable"></table></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>今日の出勤</h2><span class="muted" id="attnCount"></span></div>
+        <div class="table-scroll"><table class="tbl" id="attnTable"></table></div>
+      </div>
+    </section>
+
+    <!-- ---------- メンバー ---------- -->
+    <section class="view hidden" id="view-members">
+      <div class="card">
+        <div class="card-head"><h2>メンバー</h2><span class="muted" id="memberCount"></span></div>
+        <div class="table-scroll"><table class="tbl" id="memberTable"></table></div>
+      </div>
+    </section>
+
+    <!-- ---------- トピックス ---------- -->
+    <section class="view hidden" id="view-hanbai">
+      <div class="hb-head">
+        <div>
+          <h2 class="hb-title">販売スタッフ</h2>
+          <div class="hb-sub" id="hbSub">読み込み中…</div>
+        </div>
+        <button class="btn-link" id="hbReload">最新に</button>
+      </div>
+      <div class="hb-tabs" id="hbTabs">
+        <button class="hb-tab active" data-hb="watch">気になる人</button>
+        <button class="hb-tab" data-hb="list">スタッフ</button>
+        <button class="hb-tab" data-hb="add">記録する</button>
+      </div>
+      <div id="hbBody"></div>
+    </section>
+
+    <section class="view hidden" id="view-news">
+      <div class="card">
+        <div class="card-head">
+          <h2>トピックス</h2>
+          <div class="card-actions">
+            <select id="newsTagFilter" class="select"></select>
+            <button class="btn-ghost btn-sm" id="btnTopics" title="LINE WORKSのやりとりとMTG議事録から拾い直します">社内を取り込む</button>
+            <button class="btn-ghost btn-sm" id="btnPost">社内へ投稿</button>
+          </div>
+        </div>
+        <div id="newsFull" class="news-full"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- スマホ用の追加ボタン -->
+  <button class="fab" id="fab" aria-label="タスクを追加">＋</button>
+</div>
+
+<!-- ============ タスク追加 ============ -->
+<div class="sheet hidden" id="addSheet">
+  <form class="sheet-card" id="addForm">
+    <div class="sheet-head"><h3>タスクを追加</h3><button type="button" class="icon-btn" id="addClose">✕</button></div>
+    <label>やること<input type="text" id="fName" required placeholder="例：交通費のPDFを確認する"></label>
+    <div class="row-2">
+      <label>カテゴリ<input type="text" id="fCat" list="catList" placeholder="未分類">
+        <datalist id="catList"></datalist>
+      </label>
+      <label>優先度<select id="fPrio"><option>中</option><option>高</option><option>低</option></select></label>
+    </div>
+    <label>次の一手<input type="text" id="fNext" placeholder="次に何をすれば進むか"></label>
+    <label>いつ言ってほしい
+      <div class="chips" id="notifyChips">
+        <button type="button" class="chip" data-d="0">今日</button>
+        <button type="button" class="chip" data-d="1">明日</button>
+        <button type="button" class="chip" data-d="3">3日後</button>
+        <button type="button" class="chip" data-d="7">来週</button>
+        <button type="button" class="chip" data-d="">なし</button>
+      </div>
+      <input type="date" id="fNotify">
+    </label>
+    <button type="submit" class="btn-primary btn-block" id="addSubmit">追加する</button>
+    <p class="hint">通知日を入れると「ゆるリマインド」から連絡が来ます。</p>
+  </form>
+</div>
+
+<!-- ============ 集中モード ============ -->
+<div class="focus hidden" id="focus">
+  <div class="focus-in">
+    <div class="focus-top">
+      <div class="focus-progress"><span id="focusBar"></span></div>
+      <button class="icon-btn" id="focusClose">✕</button>
+    </div>
+    <div class="focus-count" id="focusCount"></div>
+    <h2 class="focus-name" id="focusName"></h2>
+    <div class="focus-meta" id="focusMeta"></div>
+    <div class="focus-next" id="focusNext"></div>
+    <div class="focus-btns">
+      <button class="btn-done" id="fbDone">✓ 終わった</button>
+      <button class="btn-ghost" id="fbSnooze">3日後でいい</button>
+      <button class="btn-ghost" id="fbSkip">今日はとばす →</button>
+    </div>
+    <p class="focus-hint">キーボード： <kbd>1</kbd> 終わった ／ <kbd>2</kbd> 3日後 ／ <kbd>→</kbd> とばす</p>
+  </div>
+</div>
+
+<!-- ============ 社内投稿 ============ -->
+<div class="sheet hidden" id="postSheet">
+  <form class="sheet-card" id="postForm">
+    <div class="sheet-head"><h3>お知らせを投稿</h3><button type="button" class="icon-btn" id="postClose">✕</button></div>
+    <div class="row-2">
+      <label>種別<select id="pCat"><option value="internal">社内</option><option value="client">クライアント</option></select></label>
+      <label>重要度<select id="pLevel"><option>通常</option><option>重要</option></select></label>
+    </div>
+    <label>タイトル<input type="text" id="pTitle" required></label>
+    <label>本文<textarea id="pBody" rows="4"></textarea></label>
+    <label>リンク<input type="url" id="pLink" placeholder="https://"></label>
+    <button type="submit" class="btn-primary btn-block">投稿する</button>
+  </form>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="charts.js?v=202609041437"></script>
+<script src="app.js?v=202609041437"></script>
+</body>
+</html>
