@@ -698,7 +698,41 @@ kbd {
 .ob-task-open .tt { font-weight: 600; }
 .ob-task-skip .tt { color: var(--muted); }
 .ob-task-done .tt { color: var(--text-2); }
-.ob-kubun {
-  font-size: 13px; padding: 4px 8px; border-radius: 7px;
+
+
+/* ---- 区分の複数選択（新人受け入れ） 2026-09-07 ----
+   実データが「販売/キャッチャー」のような組み合わせなので、部品を選んでつなぐ形にした */
+.ob-kubun-btn {
+  font-size: 13px; padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1);
+  max-width: 100%; text-align: left;
+}
+.ob-caret { color: var(--muted); font-size: 10px; }
+.ob-kubun-box {
+  margin-top: 9px; padding: 10px; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--plane);
+}
+.ob-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ob-chip {
+  font-size: 12.5px; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-2);
+}
+.ob-chip:hover { border-color: var(--accent); }
+.ob-chip.on { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+.ob-kubun-foot {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border);
+}
+.ob-kubun-prev { flex: 1 1 auto; font-size: 13px; font-weight: 600; min-width: 0; word-break: break-all; }
+.ob-kubun-save {
+  font-size: 13px; padding: 6px 16px; border-radius: 8px; cursor: pointer;
+  border: none; background: var(--accent); color: #fff; font-weight: 700;
+}
+.ob-kubun-save[disabled] { opacity: .6; cursor: default; }
+.ob-f { display: block; margin: 10px 0 4px; }
+.ob-f span { display: block; font-size: 12.5px; color: var(--text-2); margin-bottom: 4px; }
+.ob-f input {
+  width: 100%; font-size: 15px; padding: 9px 11px; border-radius: 9px;
   border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1);
 }
+.ob-f-note { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.6; }

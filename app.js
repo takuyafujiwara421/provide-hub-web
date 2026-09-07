@@ -1331,13 +1331,17 @@ function obDetail(name) {
   if (!p) return '<div class="hb-card"><div class="hb-empty">見つかりません</div></div>';
   var pc = Math.round(p.done / p.total * 100);
   var h = '<div style="margin-bottom:12px"><button class="hb-ghost" data-obback="1">← もどる</button></div>';
-  // 区分は今シートにある値から選ぶ（自由入力だと表記ゆれで増える）
-  var opts = (d.kubunOptions || []).slice();
-  if (p.kubun && opts.indexOf(p.kubun) < 0) opts.unshift(p.kubun);
-  var sel = '<select class="ob-kubun" id="obKubun"><option value="">（区分なし）</option>' +
-    opts.map(function (k) {
-      return '<option value="' + esc(k) + '"' + (k === p.kubun ? ' selected' : '') + '>' + esc(k) + '</option>';
-    }).join('') + '</select>';
+  // ★区分は「販売/キャッチャー」のように部品をつないだ形。**複数選べる**ようにする
+  //   （2026-09-07 拓矢さん指示：「初期設定、軒先、キャッチャーとか色々あるのをリストにして複数選択」）
+  var sel = '<button class="ob-kubun-btn" id="obKubunBtn">' +
+    esc(p.kubun || '区分を選ぶ') + ' <span class="ob-caret">▾</span></button>' +
+    '<div class="ob-kubun-box" id="obKubunBox" hidden>' +
+      obKubunChips(d.kubunParts || [], p.kubun) +
+      '<div class="ob-kubun-foot">' +
+        '<span class="ob-kubun-prev" id="obKubunPrev"></span>' +
+        '<button class="ob-kubun-save" id="obKubunSave">保存</button>' +
+      '</div>' +
+    '</div>';
 
   h += '<div class="hb-card"><div class="hb-row"><div>' +
     '<div class="hb-name" style="font-size:21px">' + esc(p.name) + '</div>' +
@@ -1395,27 +1399,109 @@ function obBind() {
       }).catch(function (e) { b.disabled = false; toast(e.message, true); });
     };
   });
-  var kb = $('#obKubun');
-  if (kb) kb.onchange = function () {
-    var v = kb.value; kb.disabled = true;
+  obKubunBind(function (v, done) {
     api('onboard.kubun', { name: OB.picked, kubun: v }).then(function () {
       var p = OB.data.people.filter(function (x) { return x.name === OB.picked; })[0];
       if (p) p.kubun = v;
-      kb.disabled = false; toast('区分を変えました');
-    }).catch(function (e) { kb.disabled = false; toast(e.message, true); });
+      done(); obRender(); toast('区分を変えました');
+    }).catch(function (e) { done(); toast(e.message, true); });
+  });
+}
+
+/* ---- 区分の複数選択（個別画面と新人追加で同じ部品を使う） ---- */
+
+/** 部品をチップで並べる。いま入っている区分にあたるものは最初からオンにする */
+function obKubunChips(parts, current) {
+  var on = obSplitKubun(current || '');
+  var all = parts.slice();
+  // いま入っている部品が候補に無ければ足す（勝手に消さない）
+  on.forEach(function (x) { if (all.indexOf(x) < 0) all.unshift(x); });
+  return '<div class="ob-chips">' + all.map(function (k) {
+    return '<button class="ob-chip' + (on.indexOf(k) >= 0 ? ' on' : '') +
+      '" data-kubun="' + esc(k) + '">' + esc(k) + '</button>';
+  }).join('') + '</div>';
+}
+
+/** スラッシュで割る。カッコの中は割らない（サーバー側と同じ規則） */
+function obSplitKubun(text) {
+  var s = String(text || ''), out = [], buf = '', depth = 0;
+  for (var i = 0; i < s.length; i++) {
+    var ch = s.charAt(i);
+    if (ch === '(' || ch === '（') depth++;
+    if (ch === ')' || ch === '）') depth = Math.max(0, depth - 1);
+    if ((ch === '/' || ch === '／') && depth === 0) { out.push(buf.trim()); buf = ''; continue; }
+    buf += ch;
+  }
+  if (buf.trim()) out.push(buf.trim());
+  return out.filter(function (x) { return x; });
+}
+
+/** 選んだ部品をつなぐ。並びは画面に出ている順（毎回同じ形になる） */
+function obKubunValue() {
+  return $$('#obKubunBox .ob-chip.on').map(function (b) {
+    return b.getAttribute('data-kubun');
+  }).join('/');
+}
+
+function obKubunPreview() {
+  var v = obKubunValue();
+  var el = $('#obKubunPrev');
+  if (el) el.textContent = v || '（区分なし）';
+  return v;
+}
+
+/** onSave(value, done) … done() を呼ぶと保存中の表示を戻す */
+function obKubunBind(onSave) {
+  var btn = $('#obKubunBtn'), box = $('#obKubunBox');
+  if (!btn || !box) return;
+  btn.onclick = function () { box.hidden = !box.hidden; obKubunPreview(); };
+  $$('#obKubunBox .ob-chip').forEach(function (c) {
+    c.onclick = function () { c.classList.toggle('on'); obKubunPreview(); };
+  });
+  var save = $('#obKubunSave');
+  if (save) save.onclick = function () {
+    var v = obKubunValue();
+    save.disabled = true; save.textContent = '保存中…';
+    onSave(v, function () { save.disabled = false; save.textContent = '保存'; box.hidden = true; });
   };
+  obKubunPreview();
 }
 
 $('#obReload').addEventListener('click', function () { OB.picked = null; OB.data = null; obLoad(); });
+// ★新人の追加は入力欄つきの画面にした（区分を複数選べるようにするため。2026-09-07）
 $('#obAddBtn').addEventListener('click', function () {
-  var name = prompt('新人の氏名（フルネーム）');
-  if (!name || !name.trim()) return;
-  var kubun = prompt('区分（例：販売/キャッチャー、初期設定ヘルパー/センター）') || '';
-  toast('登録しています…');
-  api('onboard.add', { name: name.trim(), kubun: kubun.trim() }).then(function (r) {
-    OB.data = null; OB.picked = null; obLoad();
-    toast(r['既にいる'] ? 'すでに登録されています' : '追加しました');
-  }).catch(function (e) { toast(e.message, true); });
+  var d = OB.data || {};
+  OB.picked = null;
+  $('#obBody').innerHTML =
+    '<div style="margin-bottom:12px"><button class="hb-ghost" data-obback="1">← もどる</button></div>' +
+    '<div class="hb-card">' +
+      '<div class="hb-h2" style="margin-top:0">新人を追加</div>' +
+      '<label class="ob-f"><span>氏名（フルネーム）</span>' +
+        '<input id="obNewName" type="text" placeholder="例：山田 太郎" autocomplete="off"></label>' +
+      '<label class="ob-f"><span>区分（あてはまるものを全部）</span></label>' +
+      '<button class="ob-kubun-btn" id="obKubunBtn">区分を選ぶ <span class="ob-caret">▾</span></button>' +
+      '<div class="ob-kubun-box" id="obKubunBox">' +
+        obKubunChips(d.kubunParts || [], '') +
+        '<div class="ob-kubun-foot"><span class="ob-kubun-prev" id="obKubunPrev"></span></div>' +
+      '</div>' +
+      '<div class="ob-f-note">受け入れの11項目は「未」で始まります。あとから1つずつ変えられます。</div>' +
+      '<button class="btn-primary" id="obNewSave" style="margin-top:12px">追加する</button>' +
+    '</div>';
+  obBind();
+  obKubunBind(function () { });         // チップの開閉・プレビューだけ使う
+  $('#obKubunBox').hidden = false;
+  var save = $('#obNewSave');
+  save.onclick = function () {
+    var name = ($('#obNewName').value || '').trim();
+    if (!name) { toast('氏名を入れてください', true); return; }
+    save.disabled = true; save.textContent = '登録しています…';
+    api('onboard.add', { name: name, kubun: obKubunValue() }).then(function (r) {
+      OB.data = null; OB.picked = null; obLoad();
+      toast(r['既にいる'] ? 'すでに登録されています' : '追加しました');
+    }).catch(function (e) {
+      save.disabled = false; save.textContent = '追加する'; toast(e.message, true);
+    });
+  };
 });
 
 
