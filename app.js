@@ -959,8 +959,12 @@ function hbS(r) {
   return { name: r[0], kubun: r[1], store: r[2], days: +r[3] || 0, koe: +r[4] || 0,
     catch: +r[5] || 0, sit: +r[6] || 0, perDay: r[7], avg: r[8], diff: r[9],
     pi: +r[10] || 0, prev: r[11], level: r[12], closer: r[13], state: r[14],
-    next: r[15], updated: r[16] };
+    next: r[15], updated: r[16], role: r[17] || '' };
 }
+/** ★2026-09-07 役割で見る数字が変わる。キャッチャー＝着座数／クローザー＝PI件数。
+ *  キャッチをしないクローザーに着座を出しても意味がないため。 */
+function hbIsCloser(s) { return String(s.role || '').indexOf('クローザー') >= 0; }
+function hbMainLabel(s) { return hbIsCloser(s) ? 'PI' : '着座'; }
 
 function hbLoad(fresh) {
   if (HB.loading) return;
@@ -1022,9 +1026,9 @@ function hbList() {
       '<div class="hb-meta">' + hbEsc(s.store || '—') + (s.kubun ? '　·　' + hbEsc(s.kubun) : '') +
       '</div></div>' + pill + '</div>' +
       '<div class="hb-nums">' +
-        '<div class="hb-num"><b>' + s.sit + '</b><span>着座</span></div>' +
+        '<div class="hb-num"><b>' + s.sit + '</b><span>' + hbMainLabel(s) + '</span></div>' +
         '<div class="hb-num"><b>' + hbEsc(s.perDay) + '</b><span>1日あたり</span></div>' +
-        '<div class="hb-num"><b>' + hbEsc(s.avg || '—') + '</b><span>同じ店の平均</span></div>' +
+        '<div class="hb-num"><b>' + hbEsc(s.avg || '—') + '</b><span>同じ役割の平均</span></div>' +
         '<div class="hb-num"><b>' + s.days + '</b><span>稼働日</span></div></div>' +
       '<div class="hb-bar"><i style="width:' + Math.round(s.sit / max * 100) + '%"></i></div></div>';
   }).join('');
@@ -1049,9 +1053,9 @@ function hbDetail(name) {
     (d === null ? '<span class="hb-pill flat">比較なし</span>'
                 : '<span class="hb-pill ' + (d >= 0 ? 'up' : 'down') + '">' + (d > 0 ? '+' : '') + d + '%</span>') +
     '</div><div class="hb-nums">' +
-      '<div class="hb-num"><b>' + s.sit + '</b><span>着座</span></div>' +
+      '<div class="hb-num"><b>' + s.sit + '</b><span>' + hbMainLabel(s) + '</span></div>' +
       '<div class="hb-num"><b>' + hbEsc(s.perDay) + '</b><span>1日あたり</span></div>' +
-      '<div class="hb-num"><b>' + hbEsc(s.avg || '—') + '</b><span>同じ店の平均</span></div>' +
+      '<div class="hb-num"><b>' + hbEsc(s.avg || '—') + '</b><span>同じ役割の平均</span></div>' +
       '<div class="hb-num"><b>' + s.days + '</b><span>稼働日</span></div></div></div>';
 
   if (fs.length) {
@@ -1065,13 +1069,19 @@ function hbDetail(name) {
     });
   }
 
+  // ★クローザーは着座ではなくPIを主役の列にする（2026-09-07）
+  var closer = hbIsCloser(s);
   h += '<div class="hb-h2">月ごとの数字</div><div class="hb-card"><table class="hb-tbl">' +
-    '<tr><th>月</th><th>稼働</th><th>キャッチ</th><th>着座</th><th>1日</th><th>PI</th></tr>';
-  if (!ms.length) h += '<tr><td colspan="6" style="text-align:left;opacity:.55">まだありません</td></tr>';
+    '<tr><th>月</th><th>稼働</th><th>キャッチ</th><th>' + (closer ? 'PI' : '着座') + '</th><th>1日</th>' +
+    (closer ? '' : '<th>PI</th>') + '</tr>';
+  var cspan = closer ? 5 : 6;
+  if (!ms.length) h += '<tr><td colspan="' + cspan + '" style="text-align:left;opacity:.55">まだありません</td></tr>';
   ms.forEach(function (m) {
-    var per = (+m[2] > 0) ? (+m[5] / +m[2]).toFixed(1) : '—';
+    var main = closer ? (+m[7] || 0) : (+m[5] || 0);       // m[5]=着座 m[7]=PI
+    var per = (+m[2] > 0) ? (main / +m[2]).toFixed(1) : '—';
     h += '<tr><td>' + hbEsc(m[1]) + '</td><td>' + hbEsc(m[2]) + '</td><td>' + hbEsc(m[4]) +
-      '</td><td><b>' + hbEsc(m[5]) + '</b></td><td>' + per + '</td><td>' + hbEsc(m[7]) + '</td></tr>';
+      '</td><td><b>' + main + '</b></td><td>' + per + '</td>' +
+      (closer ? '' : '<td>' + hbEsc(m[7]) + '</td>') + '</tr>';
   });
   h += '</table></div>';
 
