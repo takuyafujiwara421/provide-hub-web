@@ -1428,7 +1428,7 @@ $('#obAddBtn').addEventListener('click', function () {
  * ========================================================================== */
 function debutLoad(fresh) {
   api('debut.get', { days: 7, fresh: fresh ? 1 : '' })
-    .then(function (r) { renderDebut(r.data); })
+    .then(function (d) { renderDebut(d); })
     .catch(function (e) { console.warn('初稼働', e.message); });
 }
 
@@ -1504,7 +1504,7 @@ function todoLoad(sync) {
   var b = $('#btnTodoSync');
   if (sync && b) { b.disabled = true; b.textContent = '取り込み中…'; }
   api('todo.get', { sync: sync ? 1 : '' })
-    .then(function (r) { TODO.data = r.data; renderTodo(); })
+    .then(function (d) { TODO.data = d; renderTodo(); })
     .catch(function (e) { toast(e.message, true); })
     .then(function () {
       TODO.loading = false;
