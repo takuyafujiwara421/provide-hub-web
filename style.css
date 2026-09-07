@@ -740,3 +740,7 @@ kbd {
 /* ★hidden を効かせる。display を指定した要素は [hidden] より CSS が勝ってしまう
    （2026-09-07：確認パネルが最初から全部開いていた） */
 .debut-ask[hidden], .ob-kubun-box[hidden], [hidden] { display: none !important; }
+
+/* 緊急連絡先の入力（新人受け入れの個別画面） */
+.ob-contact .ob-f { margin-top: 0; margin-bottom: 10px; }
+.ob-contact .btn-sm { margin-top: 2px; }

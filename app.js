@@ -1349,6 +1349,21 @@ function obDetail(name) {
     '<span class="ob-count ' + (pc === 100 ? 'full' : (pc < 50 ? 'few' : '')) + '">' + p.done + ' / ' + p.total + '</span></div>' +
     '<div class="ob-prog ' + (pc === 100 ? 'full' : '') + '"><i style="width:' + pc + '%"></i></div></div>';
 
+  // ★連絡先はここで入れられる（名簿＝緊急連絡先タブに直接書く）。2026-09-07 拓矢さん指示
+  h += '<div class="hb-h2">緊急連絡先</div><div class="hb-card">' +
+    (p.inRoster
+      ? '<div class="ob-contact">' +
+          '<label class="ob-f"><span>電話番号</span>' +
+            '<input id="obTel" type="tel" inputmode="tel" value="' + esc(p.tel || '') + '" placeholder="090-0000-0000"></label>' +
+          '<label class="ob-f"><span>メールアドレス</span>' +
+            '<input id="obMail" type="email" inputmode="email" value="' + esc(p.mail || '') + '" placeholder="example@provide-biz.com"></label>' +
+          '<button class="btn-primary btn-sm" id="obContactSave">保存</button>' +
+          '<div class="ob-f-note">名簿（緊急連絡先）にそのまま書き込みます。出勤確認・交通費もここを見ています。</div>' +
+        '</div>'
+      : '<div class="hb-meta">この方は名簿（緊急連絡先）に登録がありません。<br>' +
+        '★ハブからは名簿に行を足しません（出勤確認・交通費が見ている表なので）。先に名簿へ追加してください。</div>') +
+  '</div>';
+
   h += '<div class="hb-h2">やること</div><div class="hb-card">';
   p.states.forEach(function (s) {
     var t = d.tasks.filter(function (x) { return x.col === s.col; })[0] || { name: '?' };
@@ -1399,6 +1414,20 @@ function obBind() {
       }).catch(function (e) { b.disabled = false; toast(e.message, true); });
     };
   });
+  var cs = $('#obContactSave');
+  if (cs) cs.onclick = function () {
+    cs.disabled = true; cs.textContent = '保存中…';
+    api('onboard.contact', { name: OB.picked, tel: $('#obTel').value, mail: $('#obMail').value })
+      .then(function (r) {
+        cs.disabled = false; cs.textContent = '保存';
+        if (r && r.ok === false) { toast(r.message || '保存できませんでした', true); return; }
+        var p = OB.data.people.filter(function (x) { return x.name === OB.picked; })[0];
+        if (p) { p.tel = $('#obTel').value; p.mail = $('#obMail').value; }
+        toast('名簿に書きました');
+      })
+      .catch(function (e) { cs.disabled = false; cs.textContent = '保存'; toast(e.message, true); });
+  };
+
   obKubunBind(function (v, done) {
     api('onboard.kubun', { name: OB.picked, kubun: v }).then(function () {
       var p = OB.data.people.filter(function (x) { return x.name === OB.picked; })[0];
