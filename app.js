@@ -16,7 +16,7 @@ var S = {
   token: localStorage.getItem('hub_token') || '',
   user: JSON.parse(localStorage.getItem('hub_user') || 'null'),
   view: 'home',
-  data: { tasks: null, reports: null, ops: null, news: null, members: null, storeReport: null, period: null },
+  data: { tasks: null, reports: null, ops: null, news: null, storeReport: null, period: null },
   newsCat: 'docomo',
   storeRange: 'thismonth',
   storeKind: 'shoki',
@@ -682,26 +682,6 @@ function runStoreCheck() {
 $('#btnStoreCheck').addEventListener('click', runStoreCheck);
 $('#storeCheckInput').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); runStoreCheck(); } });
 
-/* ---------- メンバー ---------- */
-function loadMembers() {
-  if (S.data.members) return renderMembers();
-  $('#memberTable').innerHTML = '<tbody><tr><td>読み込み中…</td></tr></tbody>';
-  api('members.list', {}).then(function (d) { S.data.members = d; renderMembers(); })
-    .catch(function (e) { $('#memberTable').innerHTML = '<tbody><tr><td>' + esc(e.message) + '</td></tr></tbody>'; });
-}
-function renderMembers() {
-  var d = S.data.members; if (!d) return;
-  $('#memberCount').textContent = d.count + '名 ／ 本日出勤 ' + d.onDutyToday + ' ／ 要フォロー ' + d.needsAttention;
-  var th = '<thead><tr><th>氏名</th><th>本日</th><th class="num">日報</th><th class="num">軒先PI</th><th class="num">稼働日</th><th>最終報告</th><th>気になる点</th></tr></thead>';
-  $('#memberTable').innerHTML = th + '<tbody>' + d.members.map(function (m) {
-    return '<tr><td>' + esc(m.name) + '</td>' +
-      '<td>' + (m.onDutyToday ? '<span class="badge on">出勤</span>' : '<span class="badge">－</span>') + '</td>' +
-      '<td class="num">' + m.nippou + '</td><td class="num">' + (m.pi + m.helperPi) + '</td>' +
-      '<td class="num">' + m.days + '</td><td>' + esc(m.lastReport || '－') + '</td>' +
-      '<td>' + (m.alerts.length ? '<span class="badge warn">' + esc(m.alerts.join(' / ')) + '</span>' : '') + '</td></tr>';
-  }).join('') + '</tbody>';
-}
-
 /* ---------- ニュース ---------- */
 var CAT_LABEL = { docomo: 'ドコモ', au: 'au/UQ', softbank: 'SB/Y!mobile', rakuten: '楽天モバイル',
                   maker: 'メーカー', industry: '業界', internal: '社内', client: 'クライアント',
@@ -903,7 +883,6 @@ function switchView(v) {
   $('#view-' + v).classList.remove('hidden');
   $$('.tab').forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-view') === v); });
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (v === 'members') loadMembers();
   // ★HB の実体はこのファイルの末尾で組み立てるので、起動直後（init から呼ばれる switchView）では
   //   まだ undefined。setTimeout でひと呼吸置き、ファイルを読み終えてから走らせる。
   //   （2026-09-04に「Cannot read properties of undefined」で読み込み中のまま止まった）
@@ -930,7 +909,6 @@ $$('#newsTabs .ntab').forEach(function (b) {
 $('#btnFocus').addEventListener('click', openFocus);
 $('#btnRefresh').addEventListener('click', function () {
   toast('最新に更新しています…');
-  S.data.members = null;
   loadAll(true);
 });
 $('#btnTheme').addEventListener('click', function () {
