@@ -736,3 +736,7 @@ kbd {
   border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1);
 }
 .ob-f-note { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+/* ★hidden を効かせる。display を指定した要素は [hidden] より CSS が勝ってしまう
+   （2026-09-07：確認パネルが最初から全部開いていた） */
+.debut-ask[hidden], .ob-kubun-box[hidden], [hidden] { display: none !important; }
