@@ -585,3 +585,9 @@ kbd {
 .ob-chk.on{background:#137333;border-color:#137333}
 .ob-chk:disabled{opacity:.4}
 .ob-rest{font-size:12.5px;opacity:.75;margin-top:8px;line-height:1.5}
+
+/* 出勤の日付切り替え（昨日／今日／明日）2026-09-07 */
+.day-nav { display: flex; align-items: center; gap: 6px; margin-left: auto; margin-right: 10px; }
+.day-nav b { font-size: 13px; min-width: 8.5em; text-align: center; white-space: nowrap; }
+.day-nav .btn-sm { padding: 2px 9px; line-height: 1.6; }
+.day-nav .btn-link { font-size: 12px; }

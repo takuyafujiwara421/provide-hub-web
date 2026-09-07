@@ -519,7 +519,7 @@ function renderOps() {
 
   $('#attnSummary').textContent = '本日 ' + att.staffCount + '名 / ' + att.storeCount + '店舗' +
     (att.unreported.length ? ' ・未報告 ' + att.unreported.length : '');
-  $('#attnCount').textContent = att.tab + ' ／ ' + att.staffCount + '名';
+  if (!S.attnDate) renderAttn(att);        // 日付を切り替えていない間は、まとめて取れた今日ぶんを使う
 
   /* 3区分のサマリ */
   $('#channelSummary').innerHTML = order.map(function (k) {
@@ -563,17 +563,54 @@ function renderOps() {
 
   renderStoreTable();
 
+}
+
+/* ---------- 出勤（昨日／今日／明日を矢印で行き来する） ---------- */
+// ★2026-09-07 追加。今日しか見られないと「昨日どうだったか」を別の場所で探すことになる。
+S.attnDate = '';                       // '' のときは今日（まとめて取れた分をそのまま使う）
+function ymd(d) {
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+function attnShift(days) {
+  var base = S.attnDate ? new Date(S.attnDate.replace(/-/g, '/')) : new Date();
+  base.setDate(base.getDate() + days);
+  attnLoad(ymd(base));
+}
+function attnLoad(date) {
+  S.attnDate = (date === ymd(new Date())) ? '' : date;
+  $('#attnTable').innerHTML = '<tbody><tr><td>読み込み中…</td></tr></tbody>';
+  api('attendance.day', { date: date }).then(renderAttn)
+    .catch(function (e) { $('#attnTable').innerHTML = '<tbody><tr><td>' + esc(e.message) + '</td></tr></tbody>'; });
+}
+function renderAttn(att) {
+  if (!att) return;
+  var t = ymd(new Date());
+  var d = new Date(); d.setDate(d.getDate() + 1); var tm = ymd(d);
+  var y = new Date(); y.setDate(y.getDate() - 1); var ys = ymd(y);
+  var label = att.date === t ? '今日' : att.date === tm ? '明日' : att.date === ys ? '昨日' : '';
+  var w = ['日', '月', '火', '水', '木', '金', '土'][new Date(att.date.replace(/-/g, '/')).getDay()];
+  $('#attnDayLabel').textContent = att.date.slice(5).replace('-', '/') + '（' + w + '）' + (label ? ' ' + label : '');
+  $('#attnToday').style.visibility = att.date === t ? 'hidden' : 'visible';
+  $('#attnCount').textContent = att.rows && att.rows.length
+    ? att.staffCount + '名 ／ ' + att.storeCount + '店舗'
+    : (att.note || 'この日の表はまだありません');
+
   // ★スマホでは表を縦積みにする（td の data-label が見出し代わりになる）。
   //   横スクロールしないと出勤スタッフが見えない、という状態を作らないため
   var th2 = '<thead><tr><th>店舗</th><th>出勤スタッフ</th><th>確認</th><th>備考</th></tr></thead>';
   $('#attnTable').className = 'tbl stack';
-  $('#attnTable').innerHTML = th2 + '<tbody>' + (att.rows || []).map(function (r) {
-    return '<tr><td data-label="店舗">' + esc(r.store) + '</td>' +
-      '<td data-label="出勤">' + (esc(r.staff) || '<span class="zero">－</span>') + '</td>' +
-      '<td data-label="確認">' + (r.unreported ? '<span class="badge warn">未報告</span>' : esc(r.checks.join(' ')) || '－') + '</td>' +
-      '<td data-label="備考">' + esc(r.note) + '</td></tr>';
-  }).join('') + '</tbody>';
+  $('#attnTable').innerHTML = (att.rows || []).length
+    ? th2 + '<tbody>' + att.rows.map(function (r) {
+        return '<tr><td data-label="店舗">' + esc(r.store) + '</td>' +
+          '<td data-label="出勤">' + (esc(r.staff) || '<span class="zero">－</span>') + '</td>' +
+          '<td data-label="確認">' + (r.unreported ? '<span class="badge warn">未報告</span>' : esc(r.checks.join(' ')) || '－') + '</td>' +
+          '<td data-label="備考">' + esc(r.note) + '</td></tr>';
+      }).join('') + '</tbody>'
+    : '<tbody><tr><td>' + esc(att.note || 'この日の出勤表はありません') + '</td></tr></tbody>';
 }
+$('#attnPrev').addEventListener('click', function () { attnShift(-1); });
+$('#attnNext').addEventListener('click', function () { attnShift(1); });
+$('#attnToday').addEventListener('click', function () { attnLoad(ymd(new Date())); });
 
 function renderStoreTable() {
   var o = S.data.ops; if (!o) return;

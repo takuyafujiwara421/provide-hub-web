@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=202609071424">
+<link rel="stylesheet" href="style.css?v=202609071434">
 </head>
 <body>
 
@@ -178,7 +178,16 @@
       </div>
 
       <div class="card">
-        <div class="card-head"><h2>今日の出勤</h2><span class="muted" id="attnCount"></span></div>
+        <div class="card-head">
+          <h2>出勤</h2>
+          <div class="day-nav">
+            <button class="btn-ghost btn-sm" id="attnPrev" title="前の日">◀</button>
+            <b id="attnDayLabel">今日</b>
+            <button class="btn-ghost btn-sm" id="attnNext" title="次の日">▶</button>
+            <button class="btn-link" id="attnToday">今日へ</button>
+          </div>
+          <span class="muted" id="attnCount"></span>
+        </div>
         <div class="table-scroll"><table class="tbl" id="attnTable"></table></div>
       </div>
     </section>
@@ -298,7 +307,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=202609071424"></script>
-<script src="app.js?v=202609071424"></script>
+<script src="charts.js?v=202609071434"></script>
+<script src="app.js?v=202609071434"></script>
 </body>
 </html>
