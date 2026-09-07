@@ -137,7 +137,6 @@ function loadAll(fresh) {
       })
       .catch(function (e) {
         if (/UNAUTHORIZED|ログインが必要/.test(e.message)) { logout(); return; }
-        if (sec === 'tasks') $('#todayTasks').innerHTML = '<li class="task-sub">' + esc(e.message) + '</li>';
         console.warn(sec, e.message);
       });
   });
@@ -192,38 +191,8 @@ function renderMode() {
   badge.textContent = (m.office ? '● ' : '') + m.mark + ' ' + m.label;
   badge.className = 'mode-badge' + (m.office ? ' office' : '');
 
-  $('#daySummary').innerHTML =
-    '<div class="day-title">' + esc(m.date.slice(5).replace('-', '/')) + '（' + esc(m.dow) + '）</div>' +
-    '<div class="day-note">' + esc(m.label) +
-    (m.office ? ' ／ 溜まったタスクを進められる日です' : ' ／ 現場中心の日です') + '</div>';
-
-  var ev = $('#todayEvents');
-  ev.innerHTML = m.events.length
-    ? m.events.map(eventItemHtml).join('')
-    : '<li class="task-sub">予定はありません</li>';
-
-  // 翌日の予定（前日のうちに支度できるように、今日の下に小さく出す）
-  var t = m.next;
-  if (t) {
-    $('#tomorrowHead').innerHTML =
-      '<span class="day-next-label">明日</span>' +
-      '<b>' + esc(t.date.slice(5).replace('-', '/')) + '（' + esc(t.dow) + '）</b>' +
-      '<span class="day-next-mode">' + esc(t.label) + '</span>';
-    $('#tomorrowEvents').innerHTML = t.events.length
-      ? t.events.map(function (e) { return eventItemHtml(e, 'next'); }).join('')
-      : '<li class="task-sub">予定はありません</li>';
-    $('#tomorrowBlock').classList.remove('hidden');
-  } else {
-    $('#tomorrowBlock').classList.add('hidden');
-  }
-
-  var next = (d.nextOfficeDays || []).filter(function (o) { return o.date > m.date; }).slice(0, 3);
-  $('#nextOffice').innerHTML = next.length
-    ? '次にまとめて片付けられる日：' + next.map(function (o) { return '<b>' + esc(o.date.slice(5).replace('-', '/')) + ' ' + esc(o.mark) + '</b>'; }).join('、')
-    : '';
-
-  // 集中モードはオフィス日に目立たせる
-  $('#btnFocus').className = m.office ? 'btn-primary btn-sm' : 'btn-ghost';
+  // ★2026-09-07 ホームから「今日の稼働」ブロックを外した（拓矢さん指示）。
+  //   稼働モードのバッジだけ残す。以下の描画先はもう存在しない。
 }
 
 /* ---------- タスク ---------- */
@@ -265,17 +234,7 @@ function renderTasks() {
   ['today', 'active'].forEach(function (k) {
     if (d[k]) d[k] = d[k].filter(function (t) { return !S.doneIds[String(t.id)]; });
   });
-  var st = d.stats;
-  $('#taskStats').innerHTML =
-    '<span class="stat-pill">現役 <b>' + st.active + '</b></span>' +
-    '<span class="stat-pill' + (st.overdue ? ' alert' : '') + '">期限すぎ <b>' + st.overdue + '</b></span>' +
-    '<span class="stat-pill">優先度高 <b>' + st.high + '</b></span>' +
-    '<span class="stat-pill">止まっている <b>' + st.stale + '</b></span>';
-
-  $('#todayTasks').innerHTML = d.today.length
-    ? d.today.map(taskItemHtml).join('')
-    : '<li class="task-sub">今日やるべきものはありません</li>';
-
+  // ★2026-09-07 ホームの「今日のタスク」を外した。タスクは専用タブで見る
   renderAllTasks();
   var cats = {};
   d.active.forEach(function (t) { if (t.category) cats[t.category] = 1; });
@@ -805,7 +764,6 @@ function openAdd() {
   setTimeout(function () { $('#fName').focus(); }, 50);
 }
 $('#fab').addEventListener('click', openAdd);
-$('#btnAddTop').addEventListener('click', openAdd);
 $('#btnAddTask').addEventListener('click', openAdd);
 $('#addClose').addEventListener('click', function () { $('#addSheet').classList.add('hidden'); });
 $('#addSheet').addEventListener('click', function (ev) { if (ev.target.id === 'addSheet') $('#addSheet').classList.add('hidden'); });
@@ -906,7 +864,6 @@ $$('#newsTabs .ntab').forEach(function (b) {
     if ((S.data.news.categories[S.newsCat] || []).length <= 6) loadNewsCategory(S.newsCat);
   });
 });
-$('#btnFocus').addEventListener('click', openFocus);
 $('#btnRefresh').addEventListener('click', function () {
   toast('最新に更新しています…');
   loadAll(true);
