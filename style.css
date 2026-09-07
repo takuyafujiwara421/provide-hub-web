@@ -591,3 +591,15 @@ kbd {
 .day-nav b { font-size: 13px; min-width: 8.5em; text-align: center; white-space: nowrap; }
 .day-nav .btn-sm { padding: 2px 9px; line-height: 1.6; }
 .day-nav .btn-link { font-size: 12px; }
+
+/* 販売スタッフ：役割の切り替え（キャッチャー／クローザー）2026-09-07 */
+.hb-role { display: flex; align-items: center; gap: 8px; margin-top: 12px;
+  padding-top: 12px; border-top: 1px solid rgba(0,0,0,.07); }
+.hb-role-l { font-size: 11px; opacity: .55; margin-right: 2px; white-space: nowrap; }
+.hb-role-b { flex: 1; padding: 7px 6px; border: 1px solid rgba(0,0,0,.14); border-radius: 9px;
+  background: transparent; font-size: 13px; font-weight: 600; color: inherit; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.25; }
+.hb-role-b small { font-size: 10px; font-weight: 400; opacity: .5; }
+.hb-role-b.on { background: #1f3864; border-color: #1f3864; color: #fff; }
+.hb-role-b.on small { opacity: .75; }
+.hb-role-b:disabled { opacity: .5; cursor: default; }

@@ -1014,6 +1014,8 @@ function hbList() {
   var all = HB.data.staff.map(hbS);
   var act = all.filter(function (s) { return s.days > 0; });
   var zero = all.filter(function (s) { return s.days === 0; });
+  // ★クローザーを上に出す（拓矢さん指示 2026-09-07）。同じ役割の中は名簿順のまま
+  act.sort(function (a, b) { return (hbIsCloser(b) ? 1 : 0) - (hbIsCloser(a) ? 1 : 0); });
   var max = Math.max.apply(null, act.map(function (s) { return s.sit; }).concat([1]));
   var h = '<div class="hb-f" style="margin-bottom:10px">' +
     '<input id="hbQ" placeholder="名前でしぼる" autocomplete="off"></div><div id="hbCards">';
@@ -1056,7 +1058,17 @@ function hbDetail(name) {
       '<div class="hb-num"><b>' + s.sit + '</b><span>' + hbMainLabel(s) + '</span></div>' +
       '<div class="hb-num"><b>' + hbEsc(s.perDay) + '</b><span>1日あたり</span></div>' +
       '<div class="hb-num"><b>' + hbEsc(s.avg || '—') + '</b><span>同じ役割の平均</span></div>' +
-      '<div class="hb-num"><b>' + s.days + '</b><span>稼働日</span></div></div></div>';
+      '<div class="hb-num"><b>' + s.days + '</b><span>稼働日</span></div></div>' +
+    // ★2026-09-07 ここで役割を切り替える。押した瞬間に保存して数字を入れ替える。
+    //   キャッチャー→クローザーに変わると、見る数字が着座からPIになる。
+    '<div class="hb-role" data-hbrolefor="' + hbEsc(name) + '">' +
+      '<span class="hb-role-l">見る数字</span>' +
+      ['キャッチャー', 'クローザー'].map(function (v) {
+        var on = (hbIsCloser(s) ? 'クローザー' : 'キャッチャー') === v;
+        return '<button class="hb-role-b' + (on ? ' on' : '') + '" data-hbrole="' + v + '">' +
+          v + '<small>' + (v === 'クローザー' ? 'PI' : '着座') + '</small></button>';
+      }).join('') +
+    '</div></div>';
 
   if (fs.length) {
     h += '<div class="hb-h2">気になっていること</div>';
@@ -1169,6 +1181,29 @@ function hbBind() {
       save.disabled = false; save.textContent = '保存する'; toast(e.message, true);
     });
   };
+
+  // ★役割の切り替え：押す→保存→その場で数字を入れ替える
+  var roleBox = document.querySelector('[data-hbrolefor]');
+  if (roleBox) {
+    var who = roleBox.getAttribute('data-hbrolefor');
+    roleBox.querySelectorAll('[data-hbrole]').forEach(function (btn) {
+      btn.onclick = function () {
+        var v = btn.getAttribute('data-hbrole');
+        var row = HB.data.staff.filter(function (r) { return r[0] === who; })[0];
+        if (row && (row[17] || 'キャッチャー') === v) return;      // 変わらないなら何もしない
+        roleBox.querySelectorAll('[data-hbrole]').forEach(function (b) { b.disabled = true; });
+        hbCall('note', { n: who, role: v }).then(function () {
+          if (row) row[17] = v;
+          toast(v + ' にしました。数字を入れ替えます');
+          hbCall('get', { fresh: '1' }).then(function (d) { HB.data = d; hbRender('detail', who); })
+            .catch(function () { hbRender('detail', who); });
+        }).catch(function (e) {
+          roleBox.querySelectorAll('[data-hbrole]').forEach(function (b) { b.disabled = false; });
+          toast(e.message, true);
+        });
+      };
+    });
+  }
 
   var go = $('#hbHGo');
   if (go) go.onclick = function () {
