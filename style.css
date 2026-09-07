@@ -170,7 +170,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--series-1); 
 .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .card-head h2 { font-size: 16px; margin: 0; letter-spacing: .01em; }
 .card-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-.card-foot { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.card-foot { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .muted { color: var(--muted); font-size: 13px; margin-left: auto; }
 
 /* ---------- タスク ---------- */
@@ -603,3 +604,101 @@ kbd {
 .hb-role-b.on { background: #1f3864; border-color: #1f3864; color: #fff; }
 .hb-role-b.on small { opacity: .75; }
 .hb-role-b:disabled { opacity: .5; cursor: default; }
+
+/* ---- まもなく初稼働（ホーム） 2026-09-07 ----
+   前日までに気づくためのカード。今日・明日だけ色を強め、先の予定は静かに並べる */
+.debut-list { display: flex; flex-direction: column; gap: 8px; }
+.debut-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 11px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface-1);
+}
+.debut-row.soon { border-color: var(--accent); background: rgba(235,104,52,.07); }
+.debut-when {
+  flex: 0 0 auto; min-width: 52px; text-align: center;
+  font-size: 12px; font-weight: 700; color: var(--muted);
+  padding: 3px 7px; border-radius: 6px; background: var(--plane);
+  font-variant-numeric: tabular-nums;
+}
+.debut-row.soon .debut-when { color: #fff; background: var(--accent); }
+.debut-main { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.debut-main b { font-size: 14px; }
+.debut-place { font-size: 12px; color: var(--muted); }
+.debut-row .btn-link { flex: 0 0 auto; font-size: 12px; }
+
+/* シフト表へのリンク（ホーム 店舗カードの足元） */
+.shift-links { display: inline-flex; gap: 14px; flex-wrap: wrap; }
+.shift-links a { text-decoration: none; }
+
+/* 「対象外にする」ボタンと確認（押し間違い防止に1枚はさむ） */
+.debut-row { flex-wrap: wrap; }
+.debut-x {
+  flex: 0 0 auto; font-size: 12px; color: var(--muted);
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 9px; cursor: pointer;
+}
+.debut-x:hover { color: var(--critical); border-color: var(--critical); }
+.debut-row.asking .debut-x { visibility: hidden; }
+.debut-ask {
+  flex: 1 0 100%; margin-top: 8px; padding: 9px 11px;
+  border: 1px solid var(--critical); border-radius: 8px;
+  background: rgba(208,59,59,.06);
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  font-size: 12.5px; line-height: 1.5;
+}
+.debut-ask-b { display: flex; gap: 8px; margin-left: auto; }
+.debut-ask button {
+  font-size: 12.5px; padding: 6px 12px; border-radius: 7px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1);
+}
+.debut-ask .debut-yes { background: var(--critical); border-color: var(--critical); color: #fff; }
+.debut-ask button[disabled] { opacity: .6; cursor: default; }
+
+/* ---- MTGで決まったこと（ToDo） 2026-09-07 ---- */
+.todo-list { display: flex; flex-direction: column; gap: 8px; }
+.todo-row {
+  display: flex; gap: 11px; align-items: flex-start;
+  padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface-1);
+}
+.todo-row.busy { opacity: .5; }
+.todo-check {
+  flex: 0 0 auto; width: 24px; height: 24px; margin-top: 1px;
+  border: 2px solid var(--border); border-radius: 7px; background: none;
+  cursor: pointer; font-size: 14px; line-height: 1; color: transparent;
+}
+.todo-check:hover { border-color: var(--accent); }
+.todo-row.done { opacity: .55; }
+.todo-row.done .todo-check { background: var(--good); border-color: var(--good); color: #fff; }
+.todo-row.done .todo-title { text-decoration: line-through; }
+.todo-main { min-width: 0; flex: 1 1 auto; }
+.todo-title { font-size: 14.5px; font-weight: 600; line-height: 1.45; }
+.todo-detail { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-top: 3px; }
+.todo-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+.todo-who { padding: 1px 8px; border-radius: 999px; background: var(--plane); }
+.todo-donehead { margin-top: 14px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.todo-empty { padding: 22px 12px; text-align: center; font-size: 14px; line-height: 1.7; }
+
+/* ---- 新人受け入れ 3つの状態（未／済／対象外） 2026-09-07 ----
+   スプシ側と同じ意味に揃える：対象外＝グレー、未＝目に入る色、済＝落ち着いた色 */
+.ob-task { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ob-task .tt { flex: 1 1 180px; min-width: 0; }
+.ob-sw { flex: 0 0 auto; display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.ob-st {
+  font-size: 12px; padding: 6px 11px; border: none; cursor: pointer;
+  background: var(--surface-1); color: var(--muted); border-left: 1px solid var(--border);
+}
+.ob-st:first-child { border-left: none; }
+.ob-st:hover { background: var(--plane); }
+.ob-st.on { color: #fff; font-weight: 700; }
+.ob-st-open.on { background: var(--critical); }
+.ob-st-done.on { background: var(--good); }
+.ob-st-skip.on { background: #8b8b86; }
+.ob-st[disabled] { opacity: .5; cursor: default; }
+.ob-task-open .tt { font-weight: 600; }
+.ob-task-skip .tt { color: var(--muted); }
+.ob-task-done .tt { color: var(--text-2); }
+.ob-kubun {
+  font-size: 13px; padding: 4px 8px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1);
+}

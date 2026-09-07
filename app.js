@@ -129,6 +129,7 @@ $('#loginForm').addEventListener('submit', function (ev) {
 
 /* ---------- 読み込み ---------- */
 function loadAll(fresh) {
+  debutLoad(fresh);
   ['tasks', 'reports', 'ops', 'news'].forEach(function (sec) {
     api('hub', { section: sec, fresh: fresh ? 1 : '' })
       .then(function (r) {
@@ -185,14 +186,8 @@ document.addEventListener('click', function (ev) {
 });
 
 function renderMode() {
-  var d = S.data.tasks; if (!d) return;
-  var m = d.mode;
-  var badge = $('#modeBadge');
-  badge.textContent = (m.office ? '● ' : '') + m.mark + ' ' + m.label;
-  badge.className = 'mode-badge' + (m.office ? ' office' : '');
-
-  // ★2026-09-07 ホームから「今日の稼働」ブロックを外した（拓矢さん指示）。
-  //   稼働モードのバッジだけ残す。以下の描画先はもう存在しない。
+  // ★2026-09-07 ホームの「今日の稼働」に続いて、上部の稼働モードのバッジも外した（拓矢さん指示）。
+  //   モード自体はタスクの出し分けに今も使っているので、サーバー側の判定は残してある。
 }
 
 /* ---------- タスク ---------- */
@@ -234,26 +229,13 @@ function renderTasks() {
   ['today', 'active'].forEach(function (k) {
     if (d[k]) d[k] = d[k].filter(function (t) { return !S.doneIds[String(t.id)]; });
   });
-  // ★2026-09-07 ホームの「今日のタスク」を外した。タスクは専用タブで見る
-  renderAllTasks();
+  // ★2026-09-07 ホームの「今日のタスク」を外し、タスクタブもMTGのToDoに置き換えた。
+  //   司令塔のデータ自体は「初入店の予定」などで使い続けるので取得は残す。
   var cats = {};
   d.active.forEach(function (t) { if (t.category) cats[t.category] = 1; });
   $('#catList').innerHTML = Object.keys(cats).map(function (c) { return '<option value="' + esc(c) + '">'; }).join('');
 }
 
-function renderAllTasks() {
-  var d = S.data.tasks; if (!d) return;
-  var f = $('#taskFilter').value;
-  var list = d.active.filter(function (t) {
-    if (f === 'overdue') return t.notifyDate && t.notifyDate <= todayStr();
-    if (f === 'high') return t.priority === '高';
-    if (f === 'stale') return (t.why || []).join().indexOf('動いていない') >= 0;
-    if (f === 'desk') return t.kind === 'desk';
-    if (f === 'field') return t.kind === 'field';
-    return true;
-  });
-  $('#allTasks').innerHTML = list.length ? list.map(taskItemHtml).join('') : '<li class="task-sub">該当なし</li>';
-}
 
 // チェックで完了（一覧・今日の両方）
 document.addEventListener('click', function (ev) {
@@ -801,7 +783,6 @@ function openAdd() {
   setTimeout(function () { $('#fName').focus(); }, 50);
 }
 $('#fab').addEventListener('click', openAdd);
-$('#btnAddTask').addEventListener('click', openAdd);
 $('#addClose').addEventListener('click', function () { $('#addSheet').classList.add('hidden'); });
 $('#addSheet').addEventListener('click', function (ev) { if (ev.target.id === 'addSheet') $('#addSheet').classList.add('hidden'); });
 
@@ -872,7 +853,7 @@ $('#postForm').addEventListener('submit', function (ev) {
 });
 
 /* ---------- ビュー切替 ---------- */
-function switchView(v) {
+function switchView(v, fromHash) {
   S.view = v;
   $$('.view').forEach(function (s) { s.classList.add('hidden'); });
   $('#view-' + v).classList.remove('hidden');
@@ -881,16 +862,66 @@ function switchView(v) {
   // ★HB の実体はこのファイルの末尾で組み立てるので、起動直後（init から呼ばれる switchView）では
   //   まだ undefined。setTimeout でひと呼吸置き、ファイルを読み終えてから走らせる。
   //   （2026-09-04に「Cannot read properties of undefined」で読み込み中のまま止まった）
+  if (v === 'tasks')  setTimeout(function () { if (!TODO.data) todoLoad(false); }, 0);
   if (v === 'hanbai') setTimeout(function () { if (!HB.data) hbLoad(); }, 0);
   if (v === 'onboard') setTimeout(function () { if (!OB.data) obLoad(); }, 0);
-  location.hash = v;
+  // ★ハッシュ由来の切り替えでは書き戻さない（戻る操作の履歴を壊してしまうため）
+  if (!fromHash) setHash(v);
 }
+
+/* ----------------------------------------------------------------------------
+ * ブラウザの「戻る」で画面が切り替わるようにする  2026-09-07
+ * ★これまで location.hash を書くだけで、hashchange を誰も聞いていなかった。
+ *   画面内の「もどる」ボタンでしか戻れず、端末の戻る操作だと URL だけ変わって
+ *   中身が前のままになっていた（拓矢さん指摘）。
+ *   画面の状態（どのタブか・販売スタッフの誰を開いているか）を全部ハッシュに載せ、
+ *   ハッシュ→画面の一方通行にする。
+ * -------------------------------------------------------------------------- */
+var HASH_SELF = false;   // 自分で書いた hash か（無限ループ防止）
+
+function setHash(h) {
+  if (('#' + h) === location.hash) return;
+  HASH_SELF = true;
+  location.hash = h;
+  setTimeout(function () { HASH_SELF = false; }, 0);
+}
+
+/** いまの画面の状態をハッシュ文字列にする */
+function stateHash() {
+  if (S.view === 'hanbai' && HB.picked) return 'hanbai:' + encodeURIComponent(HB.picked);
+  return S.view || 'home';
+}
+
+/** ハッシュを読んで画面をそこへ合わせる（戻る／進む／直リンクの入口） */
+function applyHash() {
+  var raw = (location.hash || '').replace(/^#/, '');
+  if (!raw) raw = 'home';
+  var i = raw.indexOf(':');
+  var view = i < 0 ? raw : raw.slice(0, i);
+  var sub = i < 0 ? '' : decodeURIComponent(raw.slice(i + 1));
+  if (!$('#view-' + view)) return;
+
+  if (view !== S.view) switchView(view, true);
+
+  if (view === 'hanbai') {
+    var want = sub || null;
+    if (want !== HB.picked) {
+      HB.picked = want;
+      if (HB.data) hbRender();          // データ待ちなら hbLoad 側で描かれる
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+}
+
+window.addEventListener('hashchange', function () {
+  if (HASH_SELF) return;
+  applyHash();
+});
 document.addEventListener('click', function (ev) {
   var b = ev.target.closest('[data-view]');
   if (!b) return;
   switchView(b.getAttribute('data-view'));
 });
-$('#taskFilter').addEventListener('change', renderAllTasks);
 $('#newsTagFilter').addEventListener('change', renderNewsFull);
 $$('#newsTabs .ntab').forEach(function (b) {
   b.addEventListener('click', function () {
@@ -921,8 +952,7 @@ $('#btnTheme').addEventListener('click', function () {
   if (!S.token) { showLogin(); return; }
   showApp();
   loadAll();
-  var h = (location.hash || '').replace('#', '');
-  if (h && $('#view-' + h)) switchView(h);
+  applyHash();
 
   // 画面を開きっぱなしにしても数字が古くならないように
   setInterval(function () { if (!document.hidden) loadAll(); }, 10 * 60 * 1000);
@@ -964,7 +994,7 @@ function hbS(r) {
 /** ★2026-09-07 役割で見る数字が変わる。キャッチャー＝着座数／クローザー＝PI件数。
  *  キャッチをしないクローザーに着座を出しても意味がないため。 */
 function hbIsCloser(s) { return String(s.role || '').indexOf('クローザー') >= 0; }
-function hbMainLabel(s) { return hbIsCloser(s) ? 'PI' : '着座'; }
+function hbMainLabel(s) { return hbIsCloser(s) ? 'PI（軒先／店内）' : '着座'; }
 
 function hbLoad(fresh) {
   if (HB.loading) return;
@@ -1066,7 +1096,7 @@ function hbDetail(name) {
       ['キャッチャー', 'クローザー'].map(function (v) {
         var on = (hbIsCloser(s) ? 'クローザー' : 'キャッチャー') === v;
         return '<button class="hb-role-b' + (on ? ' on' : '') + '" data-hbrole="' + v + '">' +
-          v + '<small>' + (v === 'クローザー' ? 'PI' : '着座') + '</small></button>';
+          v + '<small>' + (v === 'クローザー' ? 'PI（軒先／店内）' : '着座') + '</small></button>';
       }).join('') +
     '</div></div>';
 
@@ -1084,8 +1114,8 @@ function hbDetail(name) {
   // ★クローザーは着座ではなくPIを主役の列にする（2026-09-07）
   var closer = hbIsCloser(s);
   h += '<div class="hb-h2">月ごとの数字</div><div class="hb-card"><table class="hb-tbl">' +
-    '<tr><th>月</th><th>稼働</th><th>キャッチ</th><th>' + (closer ? 'PI' : '着座') + '</th><th>1日</th>' +
-    (closer ? '' : '<th>PI</th>') + '</tr>';
+    '<tr><th>月</th><th>稼働</th><th>キャッチ</th><th>' + (closer ? 'PI<small>軒先／店内</small>' : '着座') + '</th><th>1日</th>' +
+    (closer ? '' : '<th>PI<small>軒先／店内</small></th>') + '</tr>';
   var cspan = closer ? 5 : 6;
   if (!ms.length) h += '<tr><td colspan="' + cspan + '" style="text-align:left;opacity:.55">まだありません</td></tr>';
   ms.forEach(function (m) {
@@ -1140,17 +1170,22 @@ function hbBind() {
     b.onclick = function (ev) {
       ev.stopPropagation();
       HB.picked = b.getAttribute('data-hbopen');
+      setHash(stateHash());          // ★戻るで一覧へ帰れるように履歴を1つ積む
       window.scrollTo({ top: 0, behavior: 'smooth' });
       hbRender();
     };
   });
   $$('[data-hbback]').forEach(function (b) {
-    b.onclick = function () { HB.picked = null; window.scrollTo({ top: 0, behavior: 'smooth' }); hbRender(); };
+    b.onclick = function () {
+      // 画面内の「もどる」も履歴をさかのぼる形にそろえる（端末の戻ると同じ動きになる）
+      if ((location.hash || '').indexOf('#hanbai:') === 0) { history.back(); return; }
+      HB.picked = null; window.scrollTo({ top: 0, behavior: 'smooth' }); hbRender();
+    };
   });
   $$('[data-hbadd]').forEach(function (b) {
     b.onclick = function () {
       var n = b.getAttribute('data-hbadd');
-      HB.picked = null; HB.tab = 'add';
+      HB.picked = null; HB.tab = 'add'; setHash('hanbai');
       $$('#hbTabs .hb-tab').forEach(function (x) {
         x.classList.toggle('active', x.getAttribute('data-hb') === 'add'); });
       $('#hbBody').innerHTML = hbForm(n);
@@ -1296,23 +1331,40 @@ function obDetail(name) {
   if (!p) return '<div class="hb-card"><div class="hb-empty">見つかりません</div></div>';
   var pc = Math.round(p.done / p.total * 100);
   var h = '<div style="margin-bottom:12px"><button class="hb-ghost" data-obback="1">← もどる</button></div>';
+  // 区分は今シートにある値から選ぶ（自由入力だと表記ゆれで増える）
+  var opts = (d.kubunOptions || []).slice();
+  if (p.kubun && opts.indexOf(p.kubun) < 0) opts.unshift(p.kubun);
+  var sel = '<select class="ob-kubun" id="obKubun"><option value="">（区分なし）</option>' +
+    opts.map(function (k) {
+      return '<option value="' + esc(k) + '"' + (k === p.kubun ? ' selected' : '') + '>' + esc(k) + '</option>';
+    }).join('') + '</select>';
+
   h += '<div class="hb-card"><div class="hb-row"><div>' +
     '<div class="hb-name" style="font-size:21px">' + esc(p.name) + '</div>' +
-    '<div class="hb-meta">' + esc(p.kubun || '区分なし') + '</div></div>' +
+    '<div class="hb-meta">' + sel + '</div></div>' +
     '<span class="ob-count ' + (pc === 100 ? 'full' : (pc < 50 ? 'few' : '')) + '">' + p.done + ' / ' + p.total + '</span></div>' +
     '<div class="ob-prog ' + (pc === 100 ? 'full' : '') + '"><i style="width:' + pc + '%"></i></div></div>';
 
   h += '<div class="hb-h2">やること</div><div class="hb-card">';
   p.states.forEach(function (s) {
     var t = d.tasks.filter(function (x) { return x.col === s.col; })[0] || { name: '?' };
-    var memo = (!s.done && s.value) ? '<div class="memo">' + esc(s.value) + '</div>' : '';
-    h += '<div class="ob-task">' +
-      '<button class="ob-chk' + (s.done ? ' on' : '') + '" data-obchk="' + s.col + '">' + (s.done ? '✓' : '') + '</button>' +
-      '<div class="tt">' + esc(t.name) + memo + '</div></div>';
+    // 3つの状態。★対象外はスプシ側でグレーに塗る（拓矢さんが普段見ている表と同じ見た目にするため）
+    var cur = s.skip ? 'skip' : (s.done ? 'done' : 'open');
+    var memo = (cur === 'open' && s.value) ? '<div class="memo">' + esc(s.value) + '</div>' : '';
+    var btn = function (mode, label) {
+      return '<button class="ob-st ob-st-' + mode + (cur === mode ? ' on' : '') +
+        '" data-obset="' + s.col + '" data-obmode="' + mode + '">' + label + '</button>';
+    };
+    h += '<div class="ob-task ob-task-' + cur + '">' +
+      '<div class="tt">' + esc(t.name) + memo + '</div>' +
+      '<div class="ob-sw">' + btn('open', '未') + btn('done', '済') + btn('skip', '対象外') + '</div>' +
+    '</div>';
   });
   h += '</div>';
-  h += '<div class="hb-card"><div class="hb-meta">チェックを付けると「済」、外すと空欄に戻します。' +
-       'メモ（例「9/9勤務開始」）が入っている項目は、チェックするまでそのまま残ります。</div></div>';
+  h += '<div class="hb-card"><div class="hb-meta">' +
+       '「済」＝終わった／「対象外」＝この人には要らない項目（表ではグレーになります）。<br>' +
+       'すべてが済か対象外になると、この人は一覧から消えます。' +
+       'メモ（例「9/9勤務開始」）は「済」にするまで残ります。</div></div>';
   return h;
 }
 
@@ -1324,20 +1376,34 @@ function obBind() {
   $$('[data-obback]').forEach(function (b) {
     b.onclick = function () { OB.picked = null; window.scrollTo({ top: 0, behavior: 'smooth' }); obRender(); };
   });
-  $$('[data-obchk]').forEach(function (b) {
+  $$('[data-obset]').forEach(function (b) {
     b.onclick = function () {
-      var col = Number(b.getAttribute('data-obchk'));
-      var turnOn = !b.classList.contains('on');
+      if (b.classList.contains('on')) return;      // すでにその状態
+      var col = Number(b.getAttribute('data-obset'));
+      var mode = b.getAttribute('data-obmode');
       b.disabled = true;
-      api('onboard.set', { name: OB.picked, col: col, value: turnOn ? '済' : '' }).then(function () {
+      api('onboard.set', { name: OB.picked, col: col, mode: mode }).then(function () {
         var p = OB.data.people.filter(function (x) { return x.name === OB.picked; })[0];
         var s = p.states.filter(function (x) { return x.col === col; })[0];
-        s.done = turnOn; s.value = turnOn ? '済' : '';
+        s.skip = (mode === 'skip');
+        s.done = (mode !== 'open');                 // 対象外も「終わっている」扱い
+        s.value = (mode === 'done') ? '済' : '';
         p.done = p.states.filter(function (x) { return x.done; }).length;
-        obRender(); toast(turnOn ? '済にしました' : '未に戻しました');
+        p.open = p.states.filter(function (x) { return !x.done; }).length;
+        obRender();
+        toast(mode === 'done' ? '済にしました' : (mode === 'skip' ? '対象外にしました' : '未に戻しました'));
       }).catch(function (e) { b.disabled = false; toast(e.message, true); });
     };
   });
+  var kb = $('#obKubun');
+  if (kb) kb.onchange = function () {
+    var v = kb.value; kb.disabled = true;
+    api('onboard.kubun', { name: OB.picked, kubun: v }).then(function () {
+      var p = OB.data.people.filter(function (x) { return x.name === OB.picked; })[0];
+      if (p) p.kubun = v;
+      kb.disabled = false; toast('区分を変えました');
+    }).catch(function (e) { kb.disabled = false; toast(e.message, true); });
+  };
 }
 
 $('#obReload').addEventListener('click', function () { OB.picked = null; OB.data = null; obLoad(); });
@@ -1351,3 +1417,147 @@ $('#obAddBtn').addEventListener('click', function () {
     toast(r['既にいる'] ? 'すでに登録されています' : '追加しました');
   }).catch(function (e) { toast(e.message, true); });
 });
+
+
+/* ============================================================================
+ * まもなく初稼働のスタッフ  2026-09-07
+ * ★拓矢さん指示「ホームに明日初稼働の方の枠を作りたい」。
+ *   初日の人は、誰かが前日までに気づいていないと、何も知らないまま現場に立つ。
+ *   明日だけだと土日をまたいだときに見落とすので、**1週間先まで**出して
+ *   今日・明日を先頭に並べる。該当が無い週はカードごと出さない（空枠は読み飛ばされる）。
+ * ========================================================================== */
+function debutLoad(fresh) {
+  api('debut.get', { days: 7, fresh: fresh ? 1 : '' })
+    .then(function (r) { renderDebut(r.data); })
+    .catch(function (e) { console.warn('初稼働', e.message); });
+}
+
+function renderDebut(d) {
+  renderShiftLinks((d && d.links) || []);
+  var card = $('#debutCard');
+  if (!card) return;
+  var list = (d && d.people) || [];
+  if (!list.length) { card.hidden = true; return; }
+  card.hidden = false;
+  $('#debutSub').textContent = list.length + '名';
+  $('#debutBody').innerHTML = list.map(function (p) {
+    var soon = p.いつ === '今日' || p.いつ === '明日';
+    return '<div class="debut-row' + (soon ? ' soon' : '') + '" data-debut="' + esc(p.氏名) + '">' +
+      '<div class="debut-when">' + esc(p.いつ) + '</div>' +
+      '<div class="debut-main"><b>' + esc(p.氏名) + '</b>' +
+        (p.枠 ? '<span class="debut-place">' + esc(p.枠) + '</span>' : '') + '</div>' +
+      '<button class="btn-link" data-view="onboard">受け入れ →</button>' +
+      '<button class="debut-x" title="初日ではない人として今後出さない">対象外</button>' +
+      '<div class="debut-ask" hidden>' +
+        '<span><b>' + esc(p.氏名) + '</b>さんを「初日ではない」として今後この欄に出しません。<br>' +
+        '★ 出勤の予定そのものは消えません。取り消したいときは声をかけてください。</span>' +
+        '<span class="debut-ask-b">' +
+          '<button class="debut-yes">対象外にする</button>' +
+          '<button class="debut-no">やめる</button>' +
+        '</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  debutBind();
+}
+
+/** 押し間違いで消えないよう、確認を1枚はさむ（★拓矢さん指示 2026-09-07） */
+function debutBind() {
+  $$('#debutBody .debut-row').forEach(function (row) {
+    var name = row.getAttribute('data-debut');
+    var ask = row.querySelector('.debut-ask');
+    row.querySelector('.debut-x').onclick = function () { ask.hidden = false; row.classList.add('asking'); };
+    row.querySelector('.debut-no').onclick = function () { ask.hidden = true; row.classList.remove('asking'); };
+    row.querySelector('.debut-yes').onclick = function () {
+      var b = row.querySelector('.debut-yes');
+      b.disabled = true; b.textContent = '外しています…';
+      api('debut.skip', { name: name })
+        .then(function () { debutLoad(true); })
+        .catch(function (e) { b.disabled = false; b.textContent = '対象外にする'; toast(e.message, true); });
+    };
+  });
+}
+
+/** シフト表（今月・来月）へのリンク。ファイルは毎月作り直されるのでURLは毎回サーバーから受け取る */
+function renderShiftLinks(links) {
+  var el = $('#shiftLinks');
+  if (!el) return;
+  var use = links.filter(function (l) { return l.url; });
+  el.innerHTML = use.map(function (l) {
+    return '<a class="btn-link" href="' + esc(l.url) + '" target="_blank" rel="noopener">' +
+      esc(l.区分) + 'シフト（' + esc(l.月) + '） →</a>';
+  }).join('');
+}
+
+/* ============================================================================
+ * MTGで決まったこと（ToDo台帳）  2026-09-07
+ * ★拓矢さん指示「タスクはMTGの議事録にある内容のみで。チェック入れたら消えるように、
+ *   翌週のアジェンダにも完了したものは表示されないように」。
+ *   台帳（スプレッドシート）が1つの事実で、ここと火曜のアジェンダが同じものを見る。
+ *   チェックした直後だけは「今日やったこと」として残す（押し間違いを戻せるように）。
+ * ========================================================================== */
+var TODO = { data: null, loading: false };
+
+function todoLoad(sync) {
+  if (TODO.loading) return;
+  TODO.loading = true;
+  var b = $('#btnTodoSync');
+  if (sync && b) { b.disabled = true; b.textContent = '取り込み中…'; }
+  api('todo.get', { sync: sync ? 1 : '' })
+    .then(function (r) { TODO.data = r.data; renderTodo(); })
+    .catch(function (e) { toast(e.message, true); })
+    .then(function () {
+      TODO.loading = false;
+      if (b) { b.disabled = false; b.textContent = '議事録を取り込む'; }
+    });
+}
+
+function todoRowHtml(t, done) {
+  return '<div class="todo-row' + (done ? ' done' : '') + '" data-todo="' + esc(t.id) + '">' +
+    '<button class="todo-check" aria-label="完了にする">' + (done ? '✓' : '') + '</button>' +
+    '<div class="todo-main">' +
+      '<div class="todo-title">' + esc(t.title) + '</div>' +
+      (t.detail ? '<div class="todo-detail">' + esc(t.detail) + '</div>' : '') +
+      '<div class="todo-meta">' +
+        (t.who ? '<span class="todo-who">' + esc(t.who) + '</span>' : '') +
+        '<span>' + esc(t.date) + ' のMTG</span>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderTodo() {
+  var d = TODO.data; if (!d) return;
+  var open = d.open || [], just = d.justDone || [];
+  $('#todoSub').textContent = open.length ? '残り ' + open.length + '件' : 'すべて完了';
+  var sheet = $('#todoSheet'); if (sheet && d.ssUrl) sheet.href = d.ssUrl;
+
+  var html = open.length
+    ? open.map(function (t) { return todoRowHtml(t, false); }).join('')
+    : '<div class="todo-empty">残っているものはありません。<br>' +
+      '<span class="muted">新しい議事録が出たら「議事録を取り込む」で追加されます。</span></div>';
+  if (just.length) {
+    html += '<div class="todo-donehead">今日おわらせたもの（' + just.length + '）</div>' +
+      just.map(function (t) { return todoRowHtml(t, true); }).join('');
+  }
+  $('#todoBody').innerHTML = html;
+  todoBind();
+}
+
+function todoBind() {
+  $$('#todoBody .todo-row').forEach(function (row) {
+    row.querySelector('.todo-check').onclick = function () {
+      var id = row.getAttribute('data-todo');
+      var wasDone = row.classList.contains('done');
+      row.classList.add('busy');
+      api('todo.done', { id: id, off: wasDone ? 1 : '' })
+        .then(function () { todoLoad(false); })
+        .catch(function (e) { row.classList.remove('busy'); toast(e.message, true); });
+    };
+  });
+}
+
+(function () {
+  var b = $('#btnTodoSync');
+  if (b) b.addEventListener('click', function () { todoLoad(true); });
+})();

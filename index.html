@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=202609071443">
+<link rel="stylesheet" href="style.css?v=202609071539">
 </head>
 <body>
 
@@ -31,7 +31,6 @@
   <header class="topbar">
     <div class="topbar-in">
       <div class="brand">provide <b>hub</b></div>
-      <div id="modeBadge" class="mode-badge">読み込み中…</div>
       <div class="topbar-right">
         <button class="icon-btn" id="btnRefresh" title="最新に更新">⟳</button>
         <button class="icon-btn" id="btnTheme" title="表示テーマ">◐</button>
@@ -54,6 +53,12 @@
     <!-- ---------- ホーム ---------- -->
     <section class="view" id="view-home">
 
+      <!-- 近日 初稼働のスタッフ（該当が無ければ丸ごと出さない） -->
+      <div class="card" id="debutCard" hidden>
+        <div class="card-head"><h2>まもなく初稼働</h2><span class="muted" id="debutSub"></span></div>
+        <div id="debutBody" class="debut-list"></div>
+      </div>
+
       <!-- 実績サマリ -->
       <div class="card">
         <div class="card-head">
@@ -71,7 +76,10 @@
         <div id="firstVisitBanner"></div>
         <div id="channelSummary" class="ch-summary"></div>
         <div id="storeMini" class="store-mini"></div>
-        <div class="card-foot"><button class="btn-link" data-view="stores">店舗一覧 →</button></div>
+        <div class="card-foot">
+          <button class="btn-link" data-view="stores">店舗一覧 →</button>
+          <span id="shiftLinks" class="shift-links"></span>
+        </div>
       </div>
 
       <!-- ニュース＆トピックス -->
@@ -97,22 +105,18 @@
 
     <!-- ---------- タスク ---------- -->
     <section class="view hidden" id="view-tasks">
+      <!-- ★2026-09-07 タスクは「MTGの議事録で決まったこと」だけにした（拓矢さん指示）。
+           司令塔の個人タスクはここには出さない。 -->
       <div class="card">
         <div class="card-head">
-          <h2>タスク</h2>
+          <h2>MTGで決まったこと</h2>
           <div class="card-actions">
-            <select id="taskFilter" class="select">
-              <option value="all">すべて</option>
-              <option value="overdue">期限すぎ</option>
-              <option value="high">優先度 高</option>
-              <option value="stale">止まっている</option>
-              <option value="desk">デスク作業</option>
-              <option value="field">現場・対人</option>
-            </select>
-            <button class="btn-primary btn-sm" id="btnAddTask">＋ 追加</button>
+            <span class="muted" id="todoSub"></span>
+            <button class="btn-primary btn-sm" id="btnTodoSync">議事録を取り込む</button>
           </div>
         </div>
-        <ul class="task-list task-list-full" id="allTasks"></ul>
+        <div id="todoBody" class="todo-list"></div>
+        <div class="card-foot"><a class="btn-link" id="todoSheet" target="_blank" rel="noopener">台帳を開く →</a></div>
       </div>
     </section>
 
@@ -308,7 +312,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=202609071443"></script>
-<script src="app.js?v=202609071443"></script>
+<script src="charts.js?v=202609071539"></script>
+<script src="app.js?v=202609071539"></script>
 </body>
 </html>
