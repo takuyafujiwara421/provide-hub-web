@@ -2239,9 +2239,10 @@ function skDetail(name) {
   if (comm) {
     h += '<div class="hb-card tr' + (comm.要対応 ? ' tr-warn' : '') + '" style="margin-top:12px">' +
       '<div class="tr-top"><b>連絡状況</b></div>' +
-      '<div class="tr-meta">' + (comm.lastHeard
-        ? '最後に話を聞いた：' + skEsc(comm.lastHeard) + '（' + comm.経過日 + '日前）'
-        : 'まだ記録がありません') + '</div>' +
+      (comm.lastHeard
+        ? '<div class="tr-meta">最後に話を聞いた：' + skEsc(comm.lastHeard) +
+          '（' + comm.経過日 + '日前）</div>'
+        : '') +
       (comm.理由 && comm.理由.length ? '<div class="tr-why">' + comm.理由.map(skEsc).join('／') + '</div>' : '') +
       '</div>';
   }
