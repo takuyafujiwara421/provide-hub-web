@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=202609082326">
+<link rel="stylesheet" href="style.css?v=202609082329">
 </head>
 <body>
 
@@ -44,6 +44,7 @@
       <button class="tab" data-view="reports">実績</button>
       <button class="tab" data-view="stores">店舗</button>
       <button class="tab" data-view="hanbai">販売スタッフ</button>
+      <button class="tab" data-view="shoki">初期設定スタッフ</button>
       <button class="tab" data-view="onboard">新人受け入れ</button>
       <button class="tab" data-view="news">トピックス</button>
     </nav>
@@ -222,6 +223,23 @@
       <div id="hbBody"></div>
     </section>
 
+    <!-- ---------- 初期設定スタッフ（2026-09-08） ---------- -->
+    <section class="view hidden" id="view-shoki">
+      <div class="hb-head">
+        <div>
+          <h2 class="hb-title">初期設定スタッフ</h2>
+          <div class="hb-sub" id="skSub">読み込み中…</div>
+        </div>
+        <button class="btn-link" id="skReload">最新に</button>
+      </div>
+      <div class="hb-tabs" id="skTabs">
+        <button class="hb-tab active" data-sk="watch">気になる人</button>
+        <button class="hb-tab" data-sk="comm">連絡状況<span class="hb-badge" id="skBadge" hidden></span></button>
+        <button class="hb-tab" data-sk="list">スタッフ</button>
+      </div>
+      <div id="skBody"></div>
+    </section>
+
     <section class="view hidden" id="view-onboard">
       <div class="hb-head">
         <div>
@@ -320,7 +338,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=202609082326"></script>
-<script src="app.js?v=202609082326"></script>
+<script src="charts.js?v=202609082329"></script>
+<script src="app.js?v=202609082329"></script>
 </body>
 </html>

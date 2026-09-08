@@ -831,3 +831,19 @@ kbd {
 .vc-undo{font-size:12px;margin-top:5px;display:flex;align-items:center;gap:9px;opacity:.75}
 .vc-undo button{background:none;border:0;color:var(--accent,#4a6fa5);font:inherit;
   font-size:12px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline}
+
+/* ===== 初期設定スタッフ（2026-09-08） ===== */
+.sk-biko{cursor:pointer}
+.sk-biko-h{font-size:12.5px;opacity:.6;margin-bottom:6px}
+.sk-biko-h b{opacity:1;font-size:14px}
+.sk-store{opacity:.8}
+.sk-biko-b{font-size:14px;line-height:1.7;white-space:pre-wrap}
+.sk-tbl tr[data-skopen]{cursor:pointer}
+.sk-nomeibo{font-size:10.5px;opacity:.5;margin-left:6px;border:1px solid var(--line,#e3e8f0);
+  border-radius:999px;padding:1px 6px}
+.sk-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center}
+.sk-sum > div{display:flex;flex-direction:column;gap:3px}
+.sk-sum span{font-size:11px;opacity:.6}
+.sk-sum b{font-size:22px;font-variant-numeric:tabular-nums;line-height:1.2}
+.sk-sum small{font-size:11px;font-weight:600;opacity:.6;margin-left:1px}
+@media (max-width:380px){.sk-sum{grid-template-columns:repeat(2,1fr)}}

@@ -908,6 +908,7 @@ function switchView(v, fromHash) {
   if (v === 'tasks')  setTimeout(function () { if (!TODO.data) todoLoad(false); }, 0);
   if (v === 'hanbai') setTimeout(function () { if (!HB.data) hbLoad(); }, 0);
   if (v === 'onboard') setTimeout(function () { if (!OB.data) obLoad(); }, 0);
+  if (v === 'shoki')  setTimeout(function () { if (!SK.data) skLoad(false); }, 0);
   // ★ハッシュ由来の切り替えでは書き戻さない（戻る操作の履歴を壊してしまうため）
   if (!fromHash) setHash(v);
 }
@@ -932,6 +933,7 @@ function setHash(h) {
 /** いまの画面の状態をハッシュ文字列にする */
 function stateHash() {
   if (S.view === 'hanbai' && HB.picked) return 'hanbai:' + encodeURIComponent(HB.picked);
+  if (S.view === 'shoki' && SK.picked) return 'shoki:' + encodeURIComponent(SK.picked);
   return S.view || 'home';
 }
 
@@ -951,6 +953,14 @@ function applyHash() {
     if (want !== HB.picked) {
       HB.picked = want;
       if (HB.data) hbRender();          // データ待ちなら hbLoad 側で描かれる
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+  if (view === 'shoki') {
+    var w2 = sub || null;
+    if (w2 !== SK.picked) {
+      SK.picked = w2;
+      if (SK.data) skRender();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
@@ -2094,3 +2104,226 @@ function vcBind() {
     b.onclick = function () { vcTidy(b.getAttribute('data-vctidy'), b, false); };
   });
 }
+
+/* ============================================================
+ * 初期設定スタッフ  2026-09-08
+ * ------------------------------------------------------------
+ * 拓矢さんの依頼：
+ *   「近況確認は販売スタッフだけじゃなく初期設定スタッフの方も必要。別タブで作って、
+ *     近況確認と、個別で見た時に実績の確認だけできるように。1日平均設定台数も。
+ *     ＋日報の備考欄に記入があれば気になる人のところに上げて」
+ *
+ * ★数字は日報（Form）から。名前は名簿のフルネームに寄せてある。
+ *   ヒアリングの記録は販売スタッフと同じ置き場（Driveの非公開JSON）を見ている。
+ * ============================================================ */
+var SK = { data: null, tab: 'watch', picked: null };
+
+function skLoad(fresh) {
+  var sub = $('#skSub');
+  if (sub) sub.textContent = fresh ? '作り直しています…（30秒ほど）' : '読み込み中…';
+  var params = fresh ? { fresh: '1' } : {};
+  api('shoki.get', params, fresh ? 180000 : 45000).then(function (d) {
+    SK.data = d;
+    skRender();
+  }).catch(function (e) {
+    if (sub) sub.textContent = '読み込めませんでした：' + (e.message || '');
+  });
+}
+
+function skEsc(s) { return esc(String(s === null || s === undefined ? '' : s)); }
+
+function skRender() {
+  var d = SK.data, body = $('#skBody'), sub = $('#skSub');
+  if (!d || !body) return;
+  if (sub) {
+    sub.textContent = (d.staff || []).length + '名　' + (d.対象月 || '') +
+      '　更新 ' + (d.作った時刻 || '');
+  }
+  var b = $('#skBadge');
+  if (b) {
+    var n = (d.連絡 || {}).要対応 || 0;
+    b.hidden = !n; b.textContent = n;
+  }
+  if (SK.picked) { body.innerHTML = skDetail(SK.picked); return skBind(); }
+  if (SK.tab === 'watch') body.innerHTML = skWatch();
+  else if (SK.tab === 'comm') body.innerHTML = skComm();
+  else body.innerHTML = skList();
+  skBind();
+}
+
+/** 気になる人＝日報の備考に書き込みがあった人（直近30日） */
+function skWatch() {
+  var rows = (SK.data.気になる || []);
+  if (!rows.length) {
+    return '<div class="hb-card"><div class="hb-empty">直近30日で、日報の備考に書き込みはありません</div></div>';
+  }
+  var h = '<div class="hb-note">日報の「その他」欄に書き込みがあったものです。' +
+    '本人が伝えたいことなので、拾って返すと効きます。</div>';
+  rows.forEach(function (r) {
+    h += '<div class="hb-card sk-biko" data-skopen="' + skEsc(r.氏名) + '">' +
+      '<div class="sk-biko-h">' + skEsc(r.日付) + '　<b>' + skEsc(r.氏名) + '</b>' +
+      (r.店舗 ? '　<span class="sk-store">' + skEsc(r.店舗) + '</span>' : '') + '</div>' +
+      '<div class="sk-biko-b">' + skEsc(r.本文) + '</div></div>';
+  });
+  return h;
+}
+
+/** 連絡状況 */
+function skComm() {
+  var c = SK.data.連絡 || {};
+  var ps = c.people || [];
+  var h = '<div class="hb-note"><b>ルール</b>　' + skEsc(c.ルール || '') + '</div>';
+  if (!ps.length) return h + '<div class="hb-card"><div class="hb-empty">対象がいません</div></div>';
+  var todo = ps.filter(function (p) { return p.要対応; });
+  var ok = ps.filter(function (p) { return !p.要対応; });
+
+  h += '<div class="hb-h2">声をかける（' + todo.length + '名）</div>';
+  if (!todo.length) h += '<div class="hb-card"><div class="hb-empty">全員と連絡が取れています</div></div>';
+  todo.forEach(function (p) { h += skCommCard(p, true); });
+
+  if (ok.length) {
+    h += '<div class="hb-h2">連絡できている（' + ok.length + '名）</div>';
+    ok.forEach(function (p) { h += skCommCard(p, false); });
+  }
+  return h;
+}
+
+function skCommCard(p, warn) {
+  return '<div class="hb-card tr' + (warn ? ' tr-warn' : '') + '" data-skopen="' + skEsc(p.name) + '">' +
+    '<div class="tr-top"><b>' + skEsc(p.name) + '</b>' +
+    (p.新規 ? '<span class="tr-chip">新しい人</span>' : '') +
+    '<span class="tr-days">今月' + p.月稼働日 + '日／のべ' + p.のべ日数 + '日</span></div>' +
+    '<div class="tr-meta">' +
+      (p.lastHeard
+        ? '最後に話を聞いた：' + skEsc(p.lastHeard) + '（' + p.経過日 + '日前' +
+          (p.heardBy ? '・' + skEsc(p.heardBy) : '') + '）'
+        : 'まだ記録がありません') +
+    '</div>' +
+    (p.理由 && p.理由.length
+      ? '<div class="tr-why">' + p.理由.map(skEsc).join('／') + '</div>' : '') +
+    (p.heardNote ? '<div class="tr-note">' + skEsc(String(p.heardNote).slice(0, 90)) + '</div>' : '') +
+    '</div>';
+}
+
+/** スタッフ一覧 */
+function skList() {
+  var ss = SK.data.staff || [];
+  var h = '<div class="hb-card"><table class="hb-tbl sk-tbl">' +
+    '<tr><th style="text-align:left">名前</th><th>今月</th><th>設定</th><th>1日</th><th>のべ</th></tr>';
+  ss.forEach(function (p) {
+    h += '<tr data-skopen="' + skEsc(p.name) + '"><td style="text-align:left">' + skEsc(p.name) +
+      (p.名簿にある ? '' : '<span class="sk-nomeibo">名簿外</span>') + '</td>' +
+      '<td>' + p.月稼働日 + '</td><td>' + p.月設定 + '</td>' +
+      '<td><b>' + p.設定1日 + '</b></td><td>' + p.のべ日数 + '</td></tr>';
+  });
+  return h + '</table></div>';
+}
+
+/** 個別 */
+function skDetail(name) {
+  var p = (SK.data.staff || []).filter(function (x) { return x.name === name; })[0];
+  if (!p) return '<div class="hb-card"><div class="hb-empty">見つかりません</div></div>';
+  var ms = (SK.data.months || {})[name] || [];
+  var comm = ((SK.data.連絡 || {}).people || []).filter(function (x) { return x.name === name; })[0];
+
+  var h = '<button class="hb-ghost" id="skBack">← もどる</button>' +
+    '<div class="hb-h1">' + skEsc(name) + '</div>' +
+    '<div class="hb-card sk-sum">' +
+      '<div><span>今月の稼働</span><b>' + p.月稼働日 + '<small>日</small></b></div>' +
+      '<div><span>今月の設定</span><b>' + p.月設定 + '<small>件</small></b></div>' +
+      '<div><span>1日平均</span><b>' + p.設定1日 + '<small>件</small></b></div>' +
+      '<div><span>のべ稼働</span><b>' + p.のべ日数 + '<small>日</small></b></div>' +
+    '</div>' +
+    '<div class="hb-meta">初回 ' + skEsc(p.初回) + '　最終 ' + skEsc(p.最終) +
+    (p.よく行く店 ? '　よく行く店：' + skEsc(p.よく行く店) : '') + '</div>';
+
+  if (comm) {
+    h += '<div class="hb-card tr' + (comm.要対応 ? ' tr-warn' : '') + '" style="margin-top:12px">' +
+      '<div class="tr-top"><b>連絡状況</b></div>' +
+      '<div class="tr-meta">' + (comm.lastHeard
+        ? '最後に話を聞いた：' + skEsc(comm.lastHeard) + '（' + comm.経過日 + '日前）'
+        : 'まだ記録がありません') + '</div>' +
+      (comm.理由 && comm.理由.length ? '<div class="tr-why">' + comm.理由.map(skEsc).join('／') + '</div>' : '') +
+      '</div>';
+  }
+
+  h += '<div class="hb-h2">月ごとの数字</div><div class="hb-card"><table class="hb-tbl">' +
+    '<tr><th>月</th><th>稼働</th><th>設定</th><th>操作</th><th>その他</th><th>設定/日</th></tr>';
+  if (!ms.length) h += '<tr><td colspan="6" style="text-align:left;opacity:.55">まだありません</td></tr>';
+  ms.forEach(function (m) {
+    var other = (m.合計 || 0) - (m.shoki || 0) - (m.sousa || 0);
+    h += '<tr><td>' + skEsc(m.月) + '</td><td>' + m.稼働日 + '</td>' +
+      '<td><b>' + m.shoki + '</b></td><td>' + m.sousa + '</td><td>' + other + '</td>' +
+      '<td>' + m.設定1日 + '</td></tr>';
+  });
+  h += '</table></div>';
+
+  var bikos = (SK.data.気になる || []).filter(function (x) { return x.氏名 === name; });
+  if (bikos.length) {
+    h += '<div class="hb-h2">日報に書いてくれたこと（直近30日）</div><div class="hb-card">';
+    bikos.forEach(function (b) {
+      h += '<div class="hb-hear"><div class="h">' + skEsc(b.日付) +
+        (b.店舗 ? '　' + skEsc(b.店舗) : '') + '</div><div>' + skEsc(b.本文) + '</div></div>';
+    });
+    h += '</div>';
+  }
+
+  // ヒアリングを足す（販売スタッフと同じ置き場に入る）
+  h += '<div class="hb-h2">話を聞いたら記録する</div><div class="hb-card hb-f">' +
+    '<label>日付</label><input id="skHDate" type="date" value="' + new Date().toISOString().slice(0, 10) + '">' +
+    '<label>聞いた人</label><input id="skHBy" value="' + skEsc((S.user && S.user.name) || '') + '">' +
+    vcLabel('skHText', '内容') +
+    '<textarea id="skHText" placeholder="話したこと・本人が言っていたこと／🎤 を押すと話した内容が入ります"></textarea>' +
+    vcLabel('skHNext', '次の一手') +
+    '<input id="skHNext" placeholder="例）来月のシフトを一緒に見る">' +
+    '<button class="hb-go" id="skHGo" data-skfor="' + skEsc(name) + '">保存する</button></div>';
+  return h;
+}
+
+function skBind() {
+  vcBind();
+  $$('[data-skopen]').forEach(function (el) {
+    el.onclick = function (ev) {
+      ev.stopPropagation();
+      SK.picked = el.getAttribute('data-skopen');
+      setHash(stateHash());          // ★戻るで一覧へ帰れるように履歴を1つ積む
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      skRender();
+    };
+  });
+  var back = $('#skBack');
+  if (back) back.onclick = function () { SK.picked = null; setHash('shoki'); skRender(); };
+
+  var go = $('#skHGo');
+  if (go) go.onclick = function () {
+    var who = go.getAttribute('data-skfor');
+    var tx = ($('#skHText') || {}).value || '';
+    if (!tx.trim()) return toast('内容を書いてください', true);
+    go.disabled = true; go.textContent = '保存中…';
+    api('hanbai.hear', {
+      d: ($('#skHDate') || {}).value || '', n: who,
+      by: ($('#skHBy') || {}).value || '', tx: tx,
+      nx: ($('#skHNext') || {}).value || '',
+    }, 60000).then(function () {
+      go.disabled = false; go.textContent = '保存する';
+      toast('記録しました。連絡状況に反映されます');
+      $('#skHText').value = ''; $('#skHNext').value = '';
+    }).catch(function (e) {
+      go.disabled = false; go.textContent = '保存する'; toast(e.message, true);
+    });
+  };
+}
+
+$$('#skTabs .hb-tab').forEach(function (b) {
+  b.addEventListener('click', function () {
+    $$('#skTabs .hb-tab').forEach(function (x) { x.classList.remove('active'); });
+    b.classList.add('active');
+    SK.tab = b.getAttribute('data-sk');
+    SK.picked = null;
+    skRender();
+  });
+});
+(function () {
+  var r = $('#skReload');
+  if (r) r.addEventListener('click', function () { skLoad(true); });
+})();
