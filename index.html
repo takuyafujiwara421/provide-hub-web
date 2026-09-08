@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=202609082159">
+<link rel="stylesheet" href="style.css?v=202609082208">
 </head>
 <body>
 
@@ -32,6 +32,7 @@
     <div class="topbar-in">
       <div class="brand">provide <b>hub</b></div>
       <div class="topbar-right">
+        <button class="icon-btn bell" id="btnBell" title="お知らせ">🔔<span class="bell-n" id="bellN" hidden></span></button>
         <button class="icon-btn" id="btnRefresh" title="最新に更新">⟳</button>
         <button class="icon-btn" id="btnTheme" title="表示テーマ">◐</button>
         <span class="who" id="whoami"></span>
@@ -51,6 +52,12 @@
   <main class="wrap">
 
     <!-- ---------- ホーム ---------- -->
+    <!-- お知らせ（右上のベルで開く） -->
+    <div class="notice" id="noticeBox" hidden>
+      <div class="notice-head"><h3>お知らせ</h3><button class="notice-x" id="noticeX">×</button></div>
+      <div id="noticeBody"></div>
+    </div>
+
     <section class="view" id="view-home">
 
       <!-- 近日 初稼働のスタッフ（該当が無ければ丸ごと出さない） -->
@@ -208,7 +215,7 @@
       </div>
       <div class="hb-tabs" id="hbTabs">
         <button class="hb-tab active" data-hb="watch">気になる人</button>
-        <button class="hb-tab" data-hb="trainee">研修スタッフ<span class="hb-badge" id="hbBadge" hidden></span></button>
+        <button class="hb-tab" data-hb="trainee">連絡状況<span class="hb-badge" id="hbBadge" hidden></span></button>
         <button class="hb-tab" data-hb="list">スタッフ</button>
         <button class="hb-tab" data-hb="add">記録する</button>
       </div>
@@ -313,7 +320,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=202609082159"></script>
-<script src="app.js?v=202609082159"></script>
+<script src="charts.js?v=202609082208"></script>
+<script src="app.js?v=202609082208"></script>
 </body>
 </html>

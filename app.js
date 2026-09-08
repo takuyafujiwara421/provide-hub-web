@@ -1054,6 +1054,7 @@ function hbLoad(fresh) {
     HB.loading = false;
     HB.data = d;
     hbRender();
+    noticeBuild();     // ★お知らせ（右上のベル）を組み直す
   }).catch(function (e) {
     HB.loading = false;
     $('#hbSub').textContent = '読み込めませんでした';
@@ -1077,7 +1078,7 @@ function hbRender() {
 }
 
 /**
- * 研修スタッフ  2026-09-08
+ * 連絡状況  2026-09-08
  * ★新しく入った人は、放っておくと誰も声をかけないまま辞めてしまう。
  *   「気になる人」は数字が動いた人を出すものなので、**まだ数字が無い新人は引っかからない**。
  *   だからここで「連絡が空いている人」を別に出す。
@@ -1090,25 +1091,20 @@ function hbTrainee() {
       '<span class="hb-meta">右上の更新ボタンを押すと作られます（少し時間がかかります）</span></div></div>';
   }
   if (!t || !t.people || !t.people.length) {
-    return '<div class="hb-card"><div class="hb-empty">研修スタッフの登録がありません。<br>' +
-      '<span class="hb-meta">下のスプレッドシートの「スタッフ一覧」で、'
-      + '一番右の<b>研修</b>の欄に「研修中」を入れると、ここに出ます</span></div>' +
-      (HB.data && HB.data.url
-        ? '<div style="margin-top:10px"><a class="hb-ghost" href="' + esc(HB.data.url) +
-          '" target="_blank" rel="noopener">スタッフ一覧を開く →</a></div>' : '') +
-      '</div>' +
+    return '<div class="hb-card"><div class="hb-empty">対象のスタッフがいません。</div></div>' +
       '<div class="hb-card"><div class="hb-meta">' + hbTraineeRule(t) + '</div></div>';
   }
   var h = '';
   if (t['要対応']) {
-    h += '<div class="hb-alert"><b>' + t['要対応'] + '名</b> 連絡が空いています</div>';
+    h += '<div class="hb-alert"><b>' + t['要対応'] + '名</b> 声をかける番です</div>';
   } else {
-    h += '<div class="hb-ok">全員フォローできています</div>';
+    h += '<div class="hb-ok">全員と連絡が取れています</div>';
   }
   h += t.people.map(function (p) {
     var warn = p.warn;
     return '<div class="tr-card' + (warn ? ' warn' : '') + '" data-hbopen="' + esc(p.name) + '">' +
       '<div class="tr-top"><b>' + esc(p.name) + '</b>' +
+        (p.isNew ? '<span class="tr-new">今月から</span>' : '') +
         '<span class="tr-shift">稼働 ' + p.shifts + '回</span></div>' +
       (p.alerts || []).map(function (a2) {
         return '<div class="tr-alert' + (warn ? '' : ' soft') + '">' +
@@ -1131,10 +1127,15 @@ function hbTrainee() {
 
 function hbTraineeRule(t) {
   var d = (t && t['しきい値']) || {};
-  var days = d['連絡が空いた日数'] || 7;
+  var days = d['連絡が空いた日数'] || 14;
   var n = d['稼働回数'] || 3;
-  return '★出る条件<br>・最後に話を聞いてから <b>' + days + '日以上</b>あいた<br>' +
-         '・<b>' + n + '回以上</b>稼働しているのに、まだ一度も話を聞いていない';
+  var k = d['新規の節目'] || '1・3回目';
+  var sv = (t && t['対象外']) || [];
+  return '★声をかける目安<br>' +
+    '・最後に話を聞いてから <b>' + days + '日</b>あいた<br>' +
+    '・前回のあと <b>' + n + '回</b>稼働した<br>' +
+    '・今月から入った人は <b>' + k + '</b>の稼働のあと' +
+    (sv.length ? '<br><br>対象外（SV）：' + sv.map(esc).join('／') : '');
 }
 
 /** タブに件数を出す。0件なら出さない（数字が常にあると見なくなるため） */
@@ -1667,7 +1668,7 @@ $('#obAddBtn').addEventListener('click', function () {
  * ========================================================================== */
 function debutLoad(fresh) {
   api('debut.get', { days: 7, fresh: fresh ? 1 : '' })
-    .then(function (d) { renderDebut(d); })
+    .then(function (d) { renderDebut(d); S.data.debut = (d && d.people) || []; noticeBuild(); })
     .catch(function (e) { console.warn('初稼働', e.message); });
 }
 
@@ -1799,4 +1800,102 @@ function todoBind() {
 (function () {
   var b = $('#btnTodoSync');
   if (b) b.addEventListener('click', function () { todoLoad(true); });
+})();
+
+/* ============================================================================
+ * お知らせ（右上のベル）  2026-09-08
+ * ★拓矢さん指示：「期限を過ぎて連絡を取った形跡が無い場合は、
+ *   右上の通知マークのところにお知らせが届くようにしてください」
+ *
+ * ★どこかのタブを開かないと気づけない、では意味がない。
+ *   どの画面にいても目に入るように、右上に件数を出す。
+ * ========================================================================== */
+var NOTICE = { items: [] };
+
+/** 集まったデータからお知らせを組み立てる。増やすときはここに足す */
+function noticeBuild() {
+  var out = [];
+
+  // ① 声をかける番のスタッフ
+  var t = (HB.data && HB.data.trainee) || null;
+  if (t && t['要対応']) {
+    (t.people || []).filter(function (p) { return p.warn; }).forEach(function (p) {
+      out.push({
+        kind: 'comm',
+        title: p.name + ' さんに声をかける番です',
+        body: (p.alerts || []).map(function (a) { return a['文']; }).join('／'),
+        go: 'hanbai', tab: 'trainee', who: p.name,
+      });
+    });
+  }
+
+  // ② まもなく初稼働（ホームにも出しているが、見落とすと当日になる）
+  var d = (S.data && S.data.debut) || null;
+  if (d && d.length) {
+    d.forEach(function (p) {
+      if (p['いつ'] !== '今日' && p['いつ'] !== '明日') return;
+      out.push({
+        kind: 'debut',
+        title: p['氏名'] + ' さんが ' + p['いつ'] + ' 初稼働です',
+        body: (p['枠'] || '') + '　受け入れの準備を確認してください',
+        go: 'home',
+      });
+    });
+  }
+
+  NOTICE.items = out;
+  noticeBell();
+}
+
+function noticeBell() {
+  var el = $('#bellN');
+  if (!el) return;
+  var n = NOTICE.items.length;
+  if (!n) { el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = n < 100 ? String(n) : '99+';
+}
+
+function noticeRender() {
+  var box = $('#noticeBody');
+  if (!box) return;
+  if (!NOTICE.items.length) {
+    box.innerHTML = '<div class="notice-empty">いまお知らせはありません</div>';
+    return;
+  }
+  box.innerHTML = NOTICE.items.map(function (it, i) {
+    return '<div class="notice-row" data-nt="' + i + '">' +
+      '<div class="notice-t">' + esc(it.title) + '</div>' +
+      (it.body ? '<div class="notice-b">' + esc(it.body) + '</div>' : '') +
+    '</div>';
+  }).join('');
+  $$('#noticeBody .notice-row').forEach(function (r) {
+    r.onclick = function () {
+      var it = NOTICE.items[Number(r.getAttribute('data-nt'))];
+      if (!it) return;
+      $('#noticeBox').hidden = true;
+      if (it.go === 'hanbai') {
+        switchView('hanbai');
+        HB.tab = it.tab || 'trainee';
+        HB.picked = null;
+        $$('#hbTabs .hb-tab').forEach(function (x) {
+          x.classList.toggle('active', x.getAttribute('data-hb') === HB.tab); });
+        if (HB.data) hbRender();
+      } else {
+        switchView(it.go || 'home');
+      }
+    };
+  });
+}
+
+(function () {
+  var b = $('#btnBell');
+  if (b) b.addEventListener('click', function () {
+    var box = $('#noticeBox');
+    if (!box) return;
+    box.hidden = !box.hidden;
+    if (!box.hidden) { noticeRender(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  });
+  var x = $('#noticeX');
+  if (x) x.addEventListener('click', function () { $('#noticeBox').hidden = true; });
 })();

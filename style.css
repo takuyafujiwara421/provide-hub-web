@@ -777,3 +777,35 @@ kbd {
   margin-top: 6px; padding: 7px 9px; border-radius: 7px; background: var(--plane);
   font-size: 12px; color: var(--text-2); line-height: 1.6;
 }
+
+/* ---- お知らせ（右上のベル） 2026-09-08 ----
+   どのタブにいても目に入るように、上部に置く */
+.icon-btn.bell { position: relative; }
+.bell-n {
+  position: absolute; top: -3px; right: -3px; min-width: 17px; height: 17px;
+  padding: 0 4px; border-radius: 999px; background: var(--critical); color: #fff;
+  font-size: 10.5px; font-weight: 700; line-height: 17px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.notice {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 14px;
+}
+.notice-head { display: flex; align-items: center; margin-bottom: 8px; }
+.notice-head h3 { margin: 0; flex: 1; font-size: 15px; color: var(--brand); }
+.notice-x {
+  background: none; border: none; font-size: 20px; color: var(--muted);
+  cursor: pointer; line-height: 1; padding: 0 4px;
+}
+.notice-row {
+  padding: 10px 11px; border: 1px solid var(--border); border-radius: 9px;
+  margin-bottom: 7px; cursor: pointer; background: var(--plane);
+}
+.notice-row:hover { border-color: var(--accent); }
+.notice-t { font-size: 14px; font-weight: 600; line-height: 1.5; }
+.notice-b { font-size: 12.5px; color: var(--text-2); margin-top: 3px; line-height: 1.6; }
+.notice-empty { padding: 16px 8px; text-align: center; color: var(--muted); font-size: 13.5px; }
+.tr-new {
+  font-size: 10.5px; padding: 1px 7px; border-radius: 999px;
+  background: var(--accent); color: #fff; font-weight: 700; white-space: nowrap;
+}
