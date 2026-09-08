@@ -989,6 +989,13 @@ $('#btnTheme').addEventListener('click', function () {
 
 /* ---------- 起動 ---------- */
 (function init() {
+  // ★画面の向きを端末に合わせる（2026-09-08 拓矢さん指摘「横にしても縦のまま」）
+  //   ホーム画面に追加したアプリは**追加した時点のmanifestを持ち続ける**ので、
+  //   manifest を直しても入れ直すまで縦固定のまま。ここで実行時に解除する。
+  try {
+    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+  } catch (e) { /* 対応していない端末では何もしない */ }
+
   var th = localStorage.getItem('hub_theme');
   if (th) document.documentElement.setAttribute('data-theme', th);
 
