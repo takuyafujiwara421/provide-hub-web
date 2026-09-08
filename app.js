@@ -1085,9 +1085,18 @@ function hbRender() {
  */
 function hbTrainee() {
   var t = (HB.data && HB.data.trainee) || null;
+  if (t && t['まだ']) {
+    return '<div class="hb-card"><div class="hb-empty">まだ集計されていません。<br>' +
+      '<span class="hb-meta">右上の更新ボタンを押すと作られます（少し時間がかかります）</span></div></div>';
+  }
   if (!t || !t.people || !t.people.length) {
     return '<div class="hb-card"><div class="hb-empty">研修スタッフの登録がありません。<br>' +
-      '<span class="hb-meta">スタッフ一覧の「研修」の欄で<b>研修中</b>を選ぶと、ここに出ます</span></div></div>' +
+      '<span class="hb-meta">下のスプレッドシートの「スタッフ一覧」で、'
+      + '一番右の<b>研修</b>の欄に「研修中」を入れると、ここに出ます</span></div>' +
+      (HB.data && HB.data.url
+        ? '<div style="margin-top:10px"><a class="hb-ghost" href="' + esc(HB.data.url) +
+          '" target="_blank" rel="noopener">スタッフ一覧を開く →</a></div>' : '') +
+      '</div>' +
       '<div class="hb-card"><div class="hb-meta">' + hbTraineeRule(t) + '</div></div>';
   }
   var h = '';
@@ -1114,7 +1123,9 @@ function hbTrainee() {
       (p.heardNote ? '<div class="tr-note">' + esc(String(p.heardNote).slice(0, 90)) + '</div>' : '') +
     '</div>';
   }).join('');
-  h += '<div class="hb-card"><div class="hb-meta">' + hbTraineeRule(t) + '</div></div>';
+  h += '<div class="hb-card"><div class="hb-meta">' + hbTraineeRule(t) +
+       (t['作った時刻'] ? '<br><br>この集計を作った時刻：' + esc(t['作った時刻']) : '') +
+       '</div></div>';
   return h;
 }
 
