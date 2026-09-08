@@ -2172,34 +2172,43 @@ function skWatch() {
 function skComm() {
   var c = SK.data.連絡 || {};
   var ps = c.people || [];
-  var h = '<div class="hb-note"><b>ルール</b>　' + skEsc(c.ルール || '') + '</div>';
-  if (!ps.length) return h + '<div class="hb-card"><div class="hb-empty">対象がいません</div></div>';
+  if (!ps.length) {
+    return '<div class="hb-card"><div class="hb-empty">対象のスタッフがいません</div></div>';
+  }
   var todo = ps.filter(function (p) { return p.要対応; });
   var ok = ps.filter(function (p) { return !p.要対応; });
 
-  h += '<div class="hb-h2">声をかける（' + todo.length + '名）</div>';
-  if (!todo.length) h += '<div class="hb-card"><div class="hb-empty">全員と連絡が取れています</div></div>';
+  var h = todo.length
+    ? '<div class="hb-alert"><b>' + todo.length + '名</b> 声をかける番です</div>'
+    : '<div class="hb-ok">全員と連絡が取れています</div>';
   todo.forEach(function (p) { h += skCommCard(p, true); });
-
   if (ok.length) {
     h += '<div class="hb-h2">連絡できている（' + ok.length + '名）</div>';
     ok.forEach(function (p) { h += skCommCard(p, false); });
   }
+  h += '<div class="hb-card"><div class="hb-meta">' + skEsc(c.ルール || '') +
+       (SK.data.作った時刻 ? '<br><br>この集計を作った時刻：' + skEsc(SK.data.作った時刻) : '') +
+       '</div></div>';
   return h;
 }
 
+/** ★クラス名は販売スタッフ側（hbTrainee）と同じものを使う。
+ *   別名にすると CSS が当たらず、暗くしたときに枠や色が出ない（2026-09-09に実際に起きた）。 */
 function skCommCard(p, warn) {
-  return '<div class="hb-card tr' + (warn ? ' tr-warn' : '') + '" data-skopen="' + skEsc(p.name) + '">' +
+  return '<div class="tr-card' + (warn ? ' warn' : '') + '" data-skopen="' + skEsc(p.name) + '">' +
     '<div class="tr-top"><b>' + skEsc(p.name) + '</b>' +
-    (p.新規 ? '<span class="tr-chip">新しい人</span>' : '') +
-    '<span class="tr-days">今月' + p.月稼働日 + '日／のべ' + p.のべ日数 + '日</span></div>' +
+    (p.新規 ? '<span class="tr-new">新しい人</span>' : '') +
+    '<span class="tr-shift">今月' + p.月稼働日 + '日／のべ' + p.のべ日数 + '日</span></div>' +
+    (p.理由 || []).map(function (r) {
+      return '<div class="tr-alert' + (warn ? '' : ' soft') + '">' +
+        (warn ? '⚠️ ' : '') + skEsc(r) + '</div>';
+    }).join('') +
     // ★記録が無い人は理由の方に同じ文が出るので、ここは出さない（二重に見える）
     (p.lastHeard
       ? '<div class="tr-meta">最後に話を聞いた：' + skEsc(p.lastHeard) + '（' + p.経過日 + '日前' +
-        (p.heardBy ? '・' + skEsc(p.heardBy) : '') + '）</div>'
-      : '') +
-    (p.理由 && p.理由.length
-      ? '<div class="tr-why">' + p.理由.map(skEsc).join('／') + '</div>' : '') +
+        (p.heardBy ? '・' + skEsc(p.heardBy) : '') + '）' +
+        (p.最終 ? '　／　最後の稼働：' + skEsc(p.最終) : '') + '</div>'
+      : (p.最終 ? '<div class="tr-meta">最後の稼働：' + skEsc(p.最終) + '</div>' : '')) +
     (p.heardNote ? '<div class="tr-note">' + skEsc(String(p.heardNote).slice(0, 90)) + '</div>' : '') +
     '</div>';
 }
@@ -2237,13 +2246,16 @@ function skDetail(name) {
     (p.よく行く店 ? '　よく行く店：' + skEsc(p.よく行く店) : '') + '</div>';
 
   if (comm) {
-    h += '<div class="hb-card tr' + (comm.要対応 ? ' tr-warn' : '') + '" style="margin-top:12px">' +
+    h += '<div class="tr-card' + (comm.要対応 ? ' warn' : '') + '" style="margin-top:12px">' +
       '<div class="tr-top"><b>連絡状況</b></div>' +
+      (comm.理由 || []).map(function (r) {
+        return '<div class="tr-alert' + (comm.要対応 ? '' : ' soft') + '">' +
+          (comm.要対応 ? '⚠️ ' : '') + skEsc(r) + '</div>';
+      }).join('') +
       (comm.lastHeard
         ? '<div class="tr-meta">最後に話を聞いた：' + skEsc(comm.lastHeard) +
           '（' + comm.経過日 + '日前）</div>'
         : '') +
-      (comm.理由 && comm.理由.length ? '<div class="tr-why">' + comm.理由.map(skEsc).join('／') + '</div>' : '') +
       '</div>';
   }
 

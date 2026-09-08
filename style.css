@@ -29,6 +29,14 @@
   --critical:     #d03b3b;
   --up:           #006300;
 
+
+  /* ★2026-09-09 追加。ダークにしたとき色が出なかったので、
+     hb-* / ob-* / vc-* / sk-* が使う名前をここに揃えた。
+     以前は存在しない --card / --line を参照していて、
+     フォールバックの白と薄いグレーが**両方のテーマで固定**されていた。 */
+  --card:         var(--surface-1);
+  --line:         var(--border);
+
   --radius:       14px;
   --shadow:       0 1px 2px rgba(11,11,11,.06), 0 8px 24px rgba(11,11,11,.06);
   --font:         system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -520,18 +528,18 @@ kbd {
 .hb-title{margin:0;font-size:18px;font-weight:700}
 .hb-sub{font-size:12px;opacity:.7;margin-top:2px}
 .hb-tabs{display:flex;gap:6px;margin-bottom:14px}
-.hb-tab{flex:1;border:1px solid var(--line,#e3e8f0);background:transparent;color:inherit;
+.hb-tab{flex:1;border:1px solid var(--border);background:transparent;color:inherit;
   padding:9px 4px;border-radius:10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
 .hb-tab.active{background:var(--accent,#1f3864);color:#fff;border-color:transparent}
-.hb-card{background:var(--card,#fff);border-radius:14px;padding:14px 16px;margin-bottom:12px;
+.hb-card{background:var(--surface-1);border-radius:14px;padding:14px 16px;margin-bottom:12px;
   box-shadow:0 1px 2px rgba(18,32,58,.06)}
 .hb-card.tap{cursor:pointer}
 .hb-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .hb-name{font-size:17px;font-weight:700}
 .hb-meta{font-size:12px;opacity:.6;margin-top:1px}
 .hb-pill{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
-.hb-pill.up{background:#e6f4ea;color:#137333}
-.hb-pill.down{background:#fce8e6;color:#c5221f}
+.hb-pill.up{background:rgba(12,163,12,.12);color:var(--good)}
+.hb-pill.down{background:rgba(208,59,59,.12);color:var(--critical)}
 .hb-pill.flat{background:rgba(127,140,160,.14);opacity:.8}
 .hb-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
 .hb-num{background:rgba(127,140,160,.09);border-radius:10px;padding:8px 4px;text-align:center}
@@ -541,8 +549,8 @@ kbd {
 .hb-bar i{display:block;height:100%;background:var(--accent,#4a6fa5)}
 .hb-h2{font-size:12.5px;font-weight:700;opacity:.75;margin:20px 2px 8px;letter-spacing:.04em;
   display:flex;align-items:center;gap:8px}
-.hb-h2:after{content:"";flex:1;height:1px;background:var(--line,#e3e8f0)}
-.hb-find{border-left:4px solid var(--line,#e3e8f0);padding-left:12px}
+.hb-h2:after{content:"";flex:1;height:1px;background:var(--border)}
+.hb-find{border-left:4px solid var(--border);padding-left:12px}
 .hb-find.up{border-color:#137333} .hb-find.down{border-color:#c5221f}
 .hb-find .t{font-weight:700;font-size:14px}
 .hb-find .d{font-size:13px;opacity:.75;margin-top:2px}
@@ -550,7 +558,7 @@ kbd {
   padding:7px 10px;margin-top:7px}
 .hb-tbl{width:100%;border-collapse:collapse;font-size:13px}
 .hb-tbl th{text-align:right;font-weight:600;opacity:.55;font-size:11px;padding:5px 4px;
-  border-bottom:1px solid var(--line,#e3e8f0)}
+  border-bottom:1px solid var(--border)}
 .hb-tbl th:first-child,.hb-tbl td:first-child{text-align:left}
 .hb-tbl td{text-align:right;padding:7px 4px;border-bottom:1px solid rgba(127,140,160,.12);
   font-variant-numeric:tabular-nums}
@@ -559,29 +567,29 @@ kbd {
 .hb-hear .n{color:var(--accent,#4a6fa5);font-weight:600;margin-top:4px}
 .hb-f label{display:block;font-size:12px;opacity:.7;margin:10px 0 4px;font-weight:600}
 .hb-f input,.hb-f textarea,.hb-f select{width:100%;font:inherit;font-size:15px;padding:10px 12px;
-  border:1px solid var(--line,#e3e8f0);border-radius:10px;background:var(--card,#fff);color:inherit}
+  border:1px solid var(--border);border-radius:10px;background:var(--surface-1);color:inherit}
 .hb-f textarea{min-height:80px;resize:vertical}
 .hb-go{width:100%;margin-top:16px;padding:14px;border:0;border-radius:11px;
   background:var(--accent,#1f3864);color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
 .hb-go:disabled{opacity:.5}
-.hb-ghost{background:none;border:1px solid var(--line,#e3e8f0);color:inherit;opacity:.85;
+.hb-ghost{background:none;border:1px solid var(--border);color:inherit;opacity:.85;
   border-radius:9px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer}
 .hb-empty{opacity:.55;font-size:13.5px;padding:18px 2px}
 
 /* ===== 新人受け入れ（2026-09-04） ===== */
 .ob-prog{height:8px;border-radius:4px;background:rgba(127,140,160,.16);overflow:hidden;margin-top:10px}
 .ob-prog i{display:block;height:100%;background:var(--accent,#4a6fa5)}
-.ob-prog.full i{background:#137333}
+.ob-prog.full i{background:var(--good)}
 .ob-count{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;
   background:rgba(127,140,160,.14)}
-.ob-count.full{background:#e6f4ea;color:#137333}
-.ob-count.few{background:#fce8e6;color:#c5221f}
+.ob-count.full{background:rgba(12,163,12,.12);color:var(--good)}
+.ob-count.few{background:rgba(208,59,59,.12);color:var(--critical)}
 .ob-task{display:flex;align-items:flex-start;gap:10px;padding:10px 0;
   border-bottom:1px solid rgba(127,140,160,.12)}
 .ob-task:last-child{border-bottom:0}
 .ob-task .tt{flex:1;font-size:13.5px;line-height:1.45}
 .ob-task .memo{font-size:12px;opacity:.65;margin-top:2px}
-.ob-chk{width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--line,#d5dce7);
+.ob-chk{width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--border);
   background:transparent;cursor:pointer;font:inherit;font-size:14px;line-height:1;color:#fff}
 .ob-chk.on{background:#137333;border-color:#137333}
 .ob-chk:disabled{opacity:.4}
@@ -760,7 +768,7 @@ kbd {
 .hb-ok {
   padding: 10px 13px; border-radius: 9px; margin-bottom: 10px;
   background: rgba(12,163,12,.07); border: 1px solid var(--good);
-  color: #0a7a0a; font-size: 13.5px; font-weight: 600;
+  color: var(--good); font-size: 13.5px; font-weight: 600;
 }
 .tr-card {
   border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px;
@@ -817,7 +825,7 @@ kbd {
   margin:10px 0 4px}
 .vc-row label{margin:0 !important}
 .vc-btns{display:flex;gap:6px;flex-shrink:0}
-.vc-b{border:1px solid var(--line,#e3e8f0);background:var(--card,#fff);color:inherit;
+.vc-b{border:1px solid var(--border);background:var(--surface-1);color:inherit;
   border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:600;
   cursor:pointer;line-height:1.7;white-space:nowrap;opacity:.9}
 .vc-b:active{transform:scale(.96)}
@@ -832,14 +840,18 @@ kbd {
 .vc-undo button{background:none;border:0;color:var(--accent,#4a6fa5);font:inherit;
   font-size:12px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline}
 
-/* ===== 初期設定スタッフ（2026-09-08） ===== */
+/* ===== 初期設定スタッフ（2026-09-08） =====
+   ★色は全部トークン（--surface-1 / --text-2 / --border …）で書く。
+     直接 #fff や #e3e8f0 を書くと、暗くしたときに白いままになる（2026-09-09に踏んだ）。 */
+.hb-note{font-size:13px;color:var(--text-2);line-height:1.7;margin:2px 2px 12px}
+.hb-h1{font-size:19px;font-weight:800;margin:12px 2px 10px}
 .sk-biko{cursor:pointer}
 .sk-biko-h{font-size:12.5px;opacity:.6;margin-bottom:6px}
 .sk-biko-h b{opacity:1;font-size:14px}
 .sk-store{opacity:.8}
 .sk-biko-b{font-size:14px;line-height:1.7;white-space:pre-wrap}
 .sk-tbl tr[data-skopen]{cursor:pointer}
-.sk-nomeibo{font-size:10.5px;opacity:.5;margin-left:6px;border:1px solid var(--line,#e3e8f0);
+.sk-nomeibo{font-size:10.5px;opacity:.5;margin-left:6px;border:1px solid var(--border);
   border-radius:999px;padding:1px 6px}
 .sk-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center}
 .sk-sum > div{display:flex;flex-direction:column;gap:3px}
