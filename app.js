@@ -24,10 +24,41 @@ var S = {
   focus: { queue: [], i: 0 },
 };
 
-/* ---------- 通信 ---------- */
+/* ============================================================================
+ * 通信
+ * ★2026-09-08：ブラウザが**別のGoogleアカウントでログイン中**だと、
+ *   telekids所有のこのGASが弾かれて「サーバーに接続できません」になっていた
+ *   （拓矢さんのタブレットで発生。Chrome自体が別アカウントでサインインしていた）。
+ *
+ *   URLに `authuser` を足すとどのアカウントで開くか指定できる。
+ *   弾かれたら **0 → 1 → 2 → …と順に付け替えて自動で試し直す**。
+ *   一度通った指定は覚えておき、次からは最初からそれを使う。
+ *   ★これで、使う人はアカウントを気にしなくてよくなる。
+ * ========================================================================== */
 var _seq = 0;
+var AUTH_KEY = 'hub_authuser';
+var AUTH_TRIES = ['', '0', '1', '2', '3'];   // '' ＝ 指定なし（ふつうはこれで通る）
+
+function authNow() {
+  try { return localStorage.getItem(AUTH_KEY) || ''; } catch (e) { return ''; }
+}
+function authRemember(v) {
+  try { if (v) localStorage.setItem(AUTH_KEY, v); else localStorage.removeItem(AUTH_KEY); } catch (e) {}
+}
+
 function api(action, params, timeoutMs) {
+  // 覚えている指定を先頭にして、残りを順に試す
+  var remembered = authNow();
+  var order = AUTH_TRIES.slice();
+  if (remembered) {
+    order = [remembered].concat(order.filter(function (x) { return x !== remembered; }));
+  }
+  return apiTry(action, params, timeoutMs, order, 0);
+}
+
+function apiTry(action, params, timeoutMs, order, i) {
   return new Promise(function (resolve, reject) {
+    var au = order[i];
     var cb = '_hubcb' + (++_seq) + '_' + Date.now().toString(36);
     var s = document.createElement('script');
     var done = false;
@@ -45,6 +76,7 @@ function api(action, params, timeoutMs) {
     }
     window[cb] = function (res) {
       cleanup();
+      authRemember(au);            // ★通った指定を覚える
       if (res && res.ok) resolve(res.data);
       else reject(new Error((res && res.error) || '不明なエラー'));
     };
@@ -54,9 +86,20 @@ function api(action, params, timeoutMs) {
     q.set('callback', cb);
     if (S.token) q.set('token', S.token);
     for (var k in (params || {})) if (params[k] !== undefined && params[k] !== null && params[k] !== '') q.set(k, params[k]);
+    if (au) q.set('authuser', au);
 
     s.src = API + '?' + q.toString();
-    s.onerror = function () { if (!done) { cleanup(); reject(new Error('サーバーに接続できません')); } };
+    s.onerror = function () {
+      if (done) return;
+      cleanup();
+      // ★別のアカウント指定でもう一度。全部だめなら諦める
+      if (i + 1 < order.length) {
+        apiTry(action, params, timeoutMs, order, i + 1).then(resolve, reject);
+        return;
+      }
+      authRemember('');            // 覚えていた指定が効かなくなったら忘れる
+      reject(new Error('サーバーに接続できません。ブラウザが別のGoogleアカウントでログインしていないか確認してください'));
+    };
     document.head.appendChild(s);
   });
 }
