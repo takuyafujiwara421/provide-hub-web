@@ -1982,13 +1982,18 @@ function vcMic(id, btn) {
   var live = vcLiveBox(el);
   btn.classList.add('on'); btn.textContent = '■ 止める';
 
+  // ★重複対策（2026-09-08 拓矢さん報告「1回しか言ってないことが何重にも重なる」）
+  //   ev.resultIndex から回して足し込むと、同じ確定文が何度も来たときに二重・三重になる。
+  //   Androidの Chrome は確定済みの結果を作り直して送り直すことがあるため。
+  //   → **毎回 ev.results を最初から組み立て直す**。足し算をやめれば重ならない。
   var fixed = '';
   rec.onresult = function (ev) {
-    var interim = '';
-    for (var i = ev.resultIndex; i < ev.results.length; i++) {
+    var fin = '', interim = '';
+    for (var i = 0; i < ev.results.length; i++) {
       var t = ev.results[i][0].transcript;
-      if (ev.results[i].isFinal) fixed += t; else interim += t;
+      if (ev.results[i].isFinal) fin += t; else interim += t;
     }
+    fixed = fin;                 // ★足さずに置き換える。ここが重複の元だった
     el.value = VC.base + fixed + interim;
     if (live) live.textContent = interim ? '…' + interim : '';
     el.scrollTop = el.scrollHeight;
@@ -2034,7 +2039,8 @@ function vcTidy(id, btn, auto) {
   var b = btn || document.querySelector('[data-vctidy="' + id + '"]');
   if (b) { b.disabled = true; b.textContent = '整えています…'; }
 
-  api('ai.tidy', { text: text, names: vcNames() }, 60000).then(function (d) {
+  // ★45秒で諦める。AIが混んでいるときに「整えています…」のまま固まらせない
+  api('ai.tidy', { text: text, names: vcNames() }, 45000).then(function (d) {
     if (b) { b.disabled = false; b.textContent = '✨ 整える'; }
     if (!d || !d.text) { toast('整えられませんでした', true); return; }
     if (d.text === text) { toast('直すところはありませんでした'); return; }
