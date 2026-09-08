@@ -551,7 +551,7 @@ kbd {
   display:flex;align-items:center;gap:8px}
 .hb-h2:after{content:"";flex:1;height:1px;background:var(--border)}
 .hb-find{border-left:4px solid var(--border);padding-left:12px}
-.hb-find.up{border-color:#137333} .hb-find.down{border-color:#c5221f}
+.hb-find.up{border-color:var(--good)} .hb-find.down{border-color:var(--critical)}
 .hb-find .t{font-weight:700;font-size:14px}
 .hb-find .d{font-size:13px;opacity:.75;margin-top:2px}
 .hb-find .a{font-size:12.5px;background:rgba(127,140,160,.09);border-radius:8px;
@@ -591,7 +591,7 @@ kbd {
 .ob-task .memo{font-size:12px;opacity:.65;margin-top:2px}
 .ob-chk{width:24px;height:24px;flex:none;border-radius:7px;border:2px solid var(--border);
   background:transparent;cursor:pointer;font:inherit;font-size:14px;line-height:1;color:#fff}
-.ob-chk.on{background:#137333;border-color:#137333}
+.ob-chk.on{background:var(--good);border-color:var(--good)}
 .ob-chk:disabled{opacity:.4}
 .ob-rest{font-size:12.5px;opacity:.75;margin-top:8px;line-height:1.5}
 

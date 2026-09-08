@@ -1282,17 +1282,28 @@ function hbDetail(name) {
       (r[2] ? '　聞いた人 ' + hbEsc(r[2]) : '') + '</div><div>' + hbEsc(r[3]) + '</div>' +
       (r[4] ? '<div class="n">→ ' + hbEsc(r[4]) + '</div>' : '') + '</div>';
   });
-  h += '<div style="margin-top:12px"><button class="hb-ghost" data-hbadd="' + hbEsc(name) +
-    '">記録を足す</button></div></div>';
+  h += '</div>';
+  // ★タブを1つ減らしたぶん、入力欄はこの画面の中に置く（拓矢さん指示 2026-09-09）。
+  //   別のタブへ飛ばすと「誰の記録か」が見えなくなるので、本人の数字の下に置く。
+  h += '<div class="hb-h2">話を聞いたら記録する</div>' + hbForm(name, true);
   return h;
 }
 
-function hbForm(pre) {
+/**
+ * ヒアリングの入力欄。
+ * @param {string}  pre    最初に選んでおく人
+ * @param {boolean} fixed  true なら対象者を選ばせない（その人の画面の中に置くとき）
+ */
+function hbForm(pre, fixed) {
   var names = HB.data.staff.map(function (r) { return r[0]; });
-  return '<div class="hb-h2">ヒアリングを記録する</div><div class="hb-card hb-f">' +
-    '<label>対象者</label><select id="hbHName">' +
-      names.map(function (n) {
-        return '<option' + (n === pre ? ' selected' : '') + '>' + hbEsc(n) + '</option>'; }).join('') + '</select>' +
+  return (fixed ? '' : '<div class="hb-h2">ヒアリングを記録する</div>') +
+    '<div class="hb-card hb-f">' +
+    (fixed
+      ? '<input id="hbHName" type="hidden" value="' + hbEsc(pre) + '">'
+      : '<label>対象者</label><select id="hbHName">' +
+        names.map(function (n) {
+          return '<option' + (n === pre ? ' selected' : '') + '>' + hbEsc(n) + '</option>'; }).join('') +
+        '</select>') +
     '<label>日付</label><input id="hbHDate" type="date" value="' + new Date().toISOString().slice(0, 10) + '">' +
     '<label>聞いた人</label><input id="hbHBy" value="' + hbEsc((S.user && S.user.name) || '') + '">' +
     vcLabel('hbHText', '内容') +
@@ -1322,18 +1333,6 @@ function hbBind() {
       HB.picked = null; window.scrollTo({ top: 0, behavior: 'smooth' }); hbRender();
     };
   });
-  $$('[data-hbadd]').forEach(function (b) {
-    b.onclick = function () {
-      var n = b.getAttribute('data-hbadd');
-      HB.picked = null; HB.tab = 'add'; setHash('hanbai');
-      $$('#hbTabs .hb-tab').forEach(function (x) {
-        x.classList.toggle('active', x.getAttribute('data-hb') === 'add'); });
-      $('#hbBody').innerHTML = hbForm(n);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      hbBind();
-    };
-  });
-
   var q = $('#hbQ');
   if (q) q.oninput = function () {
     var v = q.value.trim();
@@ -1389,6 +1388,16 @@ function hbBind() {
       go.disabled = false; go.textContent = '保存する';
       HB.data.hearings.push(rec);
       HB.picked = rec[1];
+      // ★連絡状況にも即反映されるよう、その人の記録を上書きしておく（サーバー側も同時に更新済み）
+      var tp = ((HB.data.trainee || {}).people || []);
+      tp.forEach(function (x) {
+        if (x.name !== rec[1]) return;
+        x.lastHeard = rec[0]; x.heardBy = rec[2]; x.heardNote = rec[3];
+        x.warn = false; x.alerts = []; x.days = 0; x.sinceShifts = 0;
+      });
+      if (HB.data.trainee) {
+        HB.data.trainee['要対応'] = tp.filter(function (x) { return x.warn; }).length;
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
       hbRender();
       toast('記録しました');
