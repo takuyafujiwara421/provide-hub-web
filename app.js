@@ -1061,10 +1061,73 @@ function hbRender() {
   $('#hbSub').textContent = (d.対象月 ? d.対象月 + ' の数字　·　' : '') + 'スタッフ ' + d.staff.length + '名';
   var el = $('#hbBody');
   if (HB.picked) { el.innerHTML = hbDetail(HB.picked); return hbBind(); }
-  if (HB.tab === 'watch') el.innerHTML = hbWatch();
-  if (HB.tab === 'list')  el.innerHTML = hbList();
-  if (HB.tab === 'add')   el.innerHTML = hbForm();
+  if (HB.tab === 'watch')   el.innerHTML = hbWatch();
+  if (HB.tab === 'trainee') el.innerHTML = hbTrainee();
+  if (HB.tab === 'list')    el.innerHTML = hbList();
+  if (HB.tab === 'add')     el.innerHTML = hbForm();
+  hbBadge();
   hbBind();
+}
+
+/**
+ * 研修スタッフ  2026-09-08
+ * ★新しく入った人は、放っておくと誰も声をかけないまま辞めてしまう。
+ *   「気になる人」は数字が動いた人を出すものなので、**まだ数字が無い新人は引っかからない**。
+ *   だからここで「連絡が空いている人」を別に出す。
+ *   誰が研修中かは、スプレッドシートの一覧S列に「研修中」と入れた人だけ。
+ */
+function hbTrainee() {
+  var t = (HB.data && HB.data.trainee) || null;
+  if (!t || !t.people || !t.people.length) {
+    return '<div class="hb-card"><div class="hb-empty">研修スタッフの登録がありません。<br>' +
+      '<span class="hb-meta">スタッフ一覧の「研修」の欄で<b>研修中</b>を選ぶと、ここに出ます</span></div></div>' +
+      '<div class="hb-card"><div class="hb-meta">' + hbTraineeRule(t) + '</div></div>';
+  }
+  var h = '';
+  if (t['要対応']) {
+    h += '<div class="hb-alert"><b>' + t['要対応'] + '名</b> 連絡が空いています</div>';
+  } else {
+    h += '<div class="hb-ok">全員フォローできています</div>';
+  }
+  h += t.people.map(function (p) {
+    var warn = p.warn;
+    return '<div class="tr-card' + (warn ? ' warn' : '') + '" data-hbopen="' + esc(p.name) + '">' +
+      '<div class="tr-top"><b>' + esc(p.name) + '</b>' +
+        '<span class="tr-shift">稼働 ' + p.shifts + '回</span></div>' +
+      (p.alerts || []).map(function (a2) {
+        return '<div class="tr-alert' + (warn ? '' : ' soft') + '">' +
+          (warn ? '⚠️ ' : '') + esc(a2['文']) + '</div>';
+      }).join('') +
+      '<div class="tr-meta">' +
+        (p.lastHeard
+          ? '最後に話を聞いた：' + esc(p.lastHeard) + (p.heardBy ? '（' + esc(p.heardBy) + '）' : '')
+          : '話を聞いた記録なし') +
+        (p.lastWork ? '　／　最後の稼働：' + esc(p.lastWork) : '') +
+      '</div>' +
+      (p.heardNote ? '<div class="tr-note">' + esc(String(p.heardNote).slice(0, 90)) + '</div>' : '') +
+    '</div>';
+  }).join('');
+  h += '<div class="hb-card"><div class="hb-meta">' + hbTraineeRule(t) + '</div></div>';
+  return h;
+}
+
+function hbTraineeRule(t) {
+  var d = (t && t['しきい値']) || {};
+  var days = d['連絡が空いた日数'] || 7;
+  var n = d['稼働回数'] || 3;
+  return '★出る条件<br>・最後に話を聞いてから <b>' + days + '日以上</b>あいた<br>' +
+         '・<b>' + n + '回以上</b>稼働しているのに、まだ一度も話を聞いていない';
+}
+
+/** タブに件数を出す。0件なら出さない（数字が常にあると見なくなるため） */
+function hbBadge() {
+  var el = $('#hbBadge');
+  if (!el) return;
+  var t = (HB.data && HB.data.trainee) || null;
+  var n = t ? Number(t['要対応'] || 0) : 0;
+  if (!n) { el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = n < 10 ? ('0' + n) : String(n);
 }
 
 function hbWatch() {
