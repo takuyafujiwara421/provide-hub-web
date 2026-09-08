@@ -2193,12 +2193,11 @@ function skCommCard(p, warn) {
     '<div class="tr-top"><b>' + skEsc(p.name) + '</b>' +
     (p.新規 ? '<span class="tr-chip">新しい人</span>' : '') +
     '<span class="tr-days">今月' + p.月稼働日 + '日／のべ' + p.のべ日数 + '日</span></div>' +
-    '<div class="tr-meta">' +
-      (p.lastHeard
-        ? '最後に話を聞いた：' + skEsc(p.lastHeard) + '（' + p.経過日 + '日前' +
-          (p.heardBy ? '・' + skEsc(p.heardBy) : '') + '）'
-        : 'まだ記録がありません') +
-    '</div>' +
+    // ★記録が無い人は理由の方に同じ文が出るので、ここは出さない（二重に見える）
+    (p.lastHeard
+      ? '<div class="tr-meta">最後に話を聞いた：' + skEsc(p.lastHeard) + '（' + p.経過日 + '日前' +
+        (p.heardBy ? '・' + skEsc(p.heardBy) : '') + '）</div>'
+      : '') +
     (p.理由 && p.理由.length
       ? '<div class="tr-why">' + p.理由.map(skEsc).join('／') + '</div>' : '') +
     (p.heardNote ? '<div class="tr-note">' + skEsc(String(p.heardNote).slice(0, 90)) + '</div>' : '') +
