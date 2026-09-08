@@ -1257,8 +1257,10 @@ function hbDetail(name) {
     '<label>クローザー志望</label><select id="hbCloser">' +
       ['', 'あり', 'なし', '検討中'].map(function (v) {
         return '<option' + (v === s.closer ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select>' +
-    '<label>直近の状態</label><textarea id="hbState" placeholder="いまどんな様子か">' + hbEsc(s.state) + '</textarea>' +
-    '<label>次にやること</label><input id="hbNext" value="' + hbEsc(s.next) + '" placeholder="例）三觜さんに同行してもらう">' +
+    vcLabel('hbState', '直近の状態') +
+    '<textarea id="hbState" placeholder="いまどんな様子か／🎤 を押すと話した内容が入ります">' + hbEsc(s.state) + '</textarea>' +
+    vcLabel('hbNext', '次にやること') +
+    '<input id="hbNext" value="' + hbEsc(s.next) + '" placeholder="例）三觜さんに同行してもらう">' +
     '<button class="hb-go" data-hbsave="' + hbEsc(name) + '">保存する</button>' +
     (s.updated ? '<div class="hb-meta" style="margin-top:8px">最終更新 ' + hbEsc(s.updated) + '</div>' : '') +
     '</div>';
@@ -1283,14 +1285,17 @@ function hbForm(pre) {
         return '<option' + (n === pre ? ' selected' : '') + '>' + hbEsc(n) + '</option>'; }).join('') + '</select>' +
     '<label>日付</label><input id="hbHDate" type="date" value="' + new Date().toISOString().slice(0, 10) + '">' +
     '<label>聞いた人</label><input id="hbHBy" value="' + hbEsc((S.user && S.user.name) || '') + '">' +
-    '<label>内容</label><textarea id="hbHText" placeholder="話したこと・本人が言っていたこと"></textarea>' +
-    '<label>次の一手</label><input id="hbHNext" placeholder="例）来週の二俣川で同行">' +
+    vcLabel('hbHText', '内容') +
+    '<textarea id="hbHText" placeholder="話したこと・本人が言っていたこと／🎤 を押すと話した内容が入ります"></textarea>' +
+    vcLabel('hbHNext', '次の一手') +
+    '<input id="hbHNext" placeholder="例）来週の二俣川で同行">' +
     '<button class="hb-go" id="hbHGo">保存する</button></div>';
 }
 
 function hbVal(id) { var e = $('#' + id); return e ? e.value : ''; }
 
 function hbBind() {
+  vcBind();                      // ★音声入力とAI整形のボタン（2026-09-08）
   $$('[data-hbopen]').forEach(function (b) {
     b.onclick = function (ev) {
       ev.stopPropagation();
@@ -1899,3 +1904,171 @@ function noticeRender() {
   var x = $('#noticeX');
   if (x) x.addEventListener('click', function () { $('#noticeBox').hidden = true; });
 })();
+
+/* ============================================================
+ * 音声入力とAI整形  2026-09-08
+ * ------------------------------------------------------------
+ * 拓矢さんの依頼：
+ *   「直近の状況の入力を音声でできた方が楽。ただ音声は誤字や変換ミスが出るので、
+ *     それをAIが修正して反映まで自動化したい。文字入力と音声入力の両方できるのがベスト」
+ *
+ * ★2つの入り口を用意した（どちらか片方しか使えない端末があるため）
+ *   ① 🎤 話す … ブラウザの音声認識。押している間だけ拾い、止めると自動でAIが整える
+ *   ② ✨ 整える … 手で打った文・スマホのキーボードのマイクで入れた文を、押したときだけ整える
+ *
+ *   ①が使えない端末（LINE WORKS内のブラウザなど）でも、
+ *   **キーボードのマイクで入れて②を押せば同じことができる**。だから②を必ず出す。
+ *
+ * ★勝手に書き換えない
+ *   整えたあとは必ず「元に戻す」を出す。AIが直した結果が気に入らないときに、
+ *   打ち直しにならないようにするため。
+ * ============================================================ */
+var VC = {
+  rec: null,          // いま録音中の SpeechRecognition
+  target: null,       // 録音先の入力欄
+  base: '',           // 録音を始めた時点の文（確定ぶんを足していく土台）
+  before: {},         // 整える前の文（元に戻す用）。キーは入力欄のid
+};
+
+/** この端末で音声認識が使えるか */
+function vcCanSpeak() {
+  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+
+/**
+ * 入力欄の上に「🎤 話す」「✨ 整える」を付ける。
+ * @param {string} id     入力欄のid
+ * @param {string} label  ラベルの文字
+ */
+function vcLabel(id, label) {
+  return '<div class="vc-row"><label for="' + id + '">' + label + '</label>' +
+    '<div class="vc-btns">' +
+      (vcCanSpeak() ? '<button type="button" class="vc-b" data-vcmic="' + id + '">🎤 話す</button>' : '') +
+      '<button type="button" class="vc-b" data-vctidy="' + id + '">✨ 整える</button>' +
+    '</div></div>';
+}
+
+/** 表記を合わせたい氏名（名簿の表記）を渡す。★一覧に無い名前は置き換えさせない */
+function vcNames() {
+  try {
+    return (HB.data && HB.data.staff ? HB.data.staff : []).map(function (r) { return r[0]; })
+      .filter(Boolean).join(',');
+  } catch (e) { return ''; }
+}
+
+/** 録音を止める（画面の見た目も戻す） */
+function vcStop() {
+  if (VC.rec) { try { VC.rec.stop(); } catch (e) {} }
+}
+
+/** マイクを押したとき */
+function vcMic(id, btn) {
+  var el = $('#' + id);
+  if (!el) return;
+
+  // 押し直し＝止める
+  if (VC.rec && VC.target === el) { vcStop(); return; }
+  vcStop();
+
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var rec = new SR();
+  rec.lang = 'ja-JP';
+  rec.continuous = true;          // 一言で切らない
+  rec.interimResults = true;      // 話している途中も出す（止まって見えないように）
+
+  VC.rec = rec; VC.target = el;
+  VC.base = el.value ? el.value.replace(/\s+$/, '') + '\n' : '';
+
+  var live = vcLiveBox(el);
+  btn.classList.add('on'); btn.textContent = '■ 止める';
+
+  var fixed = '';
+  rec.onresult = function (ev) {
+    var interim = '';
+    for (var i = ev.resultIndex; i < ev.results.length; i++) {
+      var t = ev.results[i][0].transcript;
+      if (ev.results[i].isFinal) fixed += t; else interim += t;
+    }
+    el.value = VC.base + fixed + interim;
+    if (live) live.textContent = interim ? '…' + interim : '';
+    el.scrollTop = el.scrollHeight;
+  };
+
+  rec.onerror = function (ev) {
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+      toast('マイクが使えません。ブラウザの設定で許可してください', true);
+    } else if (ev.error !== 'aborted' && ev.error !== 'no-speech') {
+      toast('音声認識が止まりました（' + ev.error + '）', true);
+    }
+  };
+
+  rec.onend = function () {
+    VC.rec = null; VC.target = null;
+    btn.classList.remove('on'); btn.textContent = '🎤 話す';
+    if (live) live.remove();
+    // ★話し終わったら自動で整える（拓矢さんの「反映まで自動化」）
+    if (fixed.trim()) vcTidy(id, null, true);
+  };
+
+  try { rec.start(); } catch (e) { toast('マイクを開けませんでした', true); rec.onend(); }
+}
+
+/** 話している途中の文を出す小さな行 */
+function vcLiveBox(el) {
+  var d = document.createElement('div');
+  d.className = 'vc-live';
+  el.parentNode.insertBefore(d, el.nextSibling);
+  return d;
+}
+
+/**
+ * AIに整えてもらう。
+ * @param {boolean} auto  音声の後の自動実行か（トーストの出し方を変える）
+ */
+function vcTidy(id, btn, auto) {
+  var el = $('#' + id);
+  if (!el) return;
+  var text = String(el.value || '').trim();
+  if (!text) { if (!auto) toast('先に入力してください', true); return; }
+
+  var b = btn || document.querySelector('[data-vctidy="' + id + '"]');
+  if (b) { b.disabled = true; b.textContent = '整えています…'; }
+
+  api('ai.tidy', { text: text, names: vcNames() }, 60000).then(function (d) {
+    if (b) { b.disabled = false; b.textContent = '✨ 整える'; }
+    if (!d || !d.text) { toast('整えられませんでした', true); return; }
+    if (d.text === text) { toast('直すところはありませんでした'); return; }
+    VC.before[id] = text;
+    el.value = d.text;
+    vcUndoBar(el, id);
+    toast(auto ? '文字にして整えました' : '整えました');
+  }).catch(function (e) {
+    if (b) { b.disabled = false; b.textContent = '✨ 整える'; }
+    toast(e.message || '整えられませんでした', true);
+  });
+}
+
+/** 「元に戻す」の行を出す。★AIの直しが気に入らないとき打ち直しにならないように */
+function vcUndoBar(el, id) {
+  var old = el.parentNode.querySelector('[data-vcundo="' + id + '"]');
+  if (old) old.remove();
+  var d = document.createElement('div');
+  d.className = 'vc-undo';
+  d.setAttribute('data-vcundo', id);
+  d.innerHTML = '<span>AIが整えました</span><button type="button">元に戻す</button>';
+  d.querySelector('button').onclick = function () {
+    if (VC.before[id] != null) el.value = VC.before[id];
+    d.remove();
+  };
+  el.parentNode.insertBefore(d, el.nextSibling);
+}
+
+/** 画面を描き直すたびに呼ぶ（ボタンにイベントを付け直す） */
+function vcBind() {
+  $$('[data-vcmic]').forEach(function (b) {
+    b.onclick = function () { vcMic(b.getAttribute('data-vcmic'), b); };
+  });
+  $$('[data-vctidy]').forEach(function (b) {
+    b.onclick = function () { vcTidy(b.getAttribute('data-vctidy'), b, false); };
+  });
+}
