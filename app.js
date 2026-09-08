@@ -1958,6 +1958,7 @@ function vcNames() {
 
 /** 録音を止める（画面の見た目も戻す） */
 function vcStop() {
+  if (VC.stopNow) { VC.stopNow(); VC.stopNow = null; return; }
   if (VC.rec) { try { VC.rec.stop(); } catch (e) {} }
 }
 
@@ -1973,7 +1974,11 @@ function vcMic(id, btn) {
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var rec = new SR();
   rec.lang = 'ja-JP';
-  rec.continuous = true;          // 一言で切らない
+  // ★continuous は false（2026-09-08）。
+  //   true にすると Android の Chrome が**同じ確定文を何度も返す**ため、
+  //   「そしたらそしたら 最近そしたら 最近そしたら…」と際限なく増える（実機で確認）。
+  //   1発話ごとに区切り、下の onend で自分で再開する形にすれば重ならない。
+  rec.continuous = false;
   rec.interimResults = true;      // 話している途中も出す（止まって見えないように）
 
   VC.rec = rec; VC.target = el;
@@ -1982,40 +1987,51 @@ function vcMic(id, btn) {
   var live = vcLiveBox(el);
   btn.classList.add('on'); btn.textContent = '■ 止める';
 
-  // ★重複対策（2026-09-08 拓矢さん報告「1回しか言ってないことが何重にも重なる」）
-  //   ev.resultIndex から回して足し込むと、同じ確定文が何度も来たときに二重・三重になる。
-  //   Androidの Chrome は確定済みの結果を作り直して送り直すことがあるため。
-  //   → **毎回 ev.results を最初から組み立て直す**。足し算をやめれば重ならない。
-  var fixed = '';
+  var parts = [];                 // 確定した文をためる
+  var stopped = false;            // 「止める」を押したか
+  var got = false;                // 一度でも文字になったか
+
   rec.onresult = function (ev) {
-    var fin = '', interim = '';
+    var interim = '';
     for (var i = 0; i < ev.results.length; i++) {
       var t = ev.results[i][0].transcript;
-      if (ev.results[i].isFinal) fin += t; else interim += t;
+      if (!ev.results[i].isFinal) { interim += t; continue; }
+      // ★同じ確定文が続けて来たら捨てる（Androidの二重返しへの二段目の守り）
+      if (parts[parts.length - 1] === t) continue;
+      parts.push(t);
+      got = true;
     }
-    fixed = fin;                 // ★足さずに置き換える。ここが重複の元だった
-    el.value = VC.base + fixed + interim;
+    el.value = VC.base + parts.join('') + interim;
     if (live) live.textContent = interim ? '…' + interim : '';
     el.scrollTop = el.scrollHeight;
   };
 
   rec.onerror = function (ev) {
     if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+      stopped = true;
       toast('マイクが使えません。ブラウザの設定で許可してください', true);
     } else if (ev.error !== 'aborted' && ev.error !== 'no-speech') {
+      stopped = true;
       toast('音声認識が止まりました（' + ev.error + '）', true);
     }
+    // no-speech / aborted は黙って続ける（下の onend が再開する）
   };
 
   rec.onend = function () {
+    // ★止めるまでは自分で再開する。continuous=false の代わり
+    if (!stopped) {
+      try { rec.start(); return; } catch (e) { /* 再開できなければ終わる */ }
+    }
     VC.rec = null; VC.target = null;
     btn.classList.remove('on'); btn.textContent = '🎤 話す';
     if (live) live.remove();
-    // ★話し終わったら自動で整える（拓矢さんの「反映まで自動化」）
-    if (fixed.trim()) vcTidy(id, null, true);
+    if (got) toast('文字にしました。おかしいところは直してください');
   };
 
-  try { rec.start(); } catch (e) { toast('マイクを開けませんでした', true); rec.onend(); }
+  // 「止める」を押したときに再開させないための入口
+  VC.stopNow = function () { stopped = true; try { rec.stop(); } catch (e) {} };
+
+  try { rec.start(); } catch (e) { stopped = true; toast('マイクを開けませんでした', true); rec.onend(); }
 }
 
 /** 話している途中の文を出す小さな行 */
