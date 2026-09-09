@@ -889,3 +889,5 @@ kbd {
 .ext-name{font-size:14.5px;font-weight:700}
 .ext-note{font-size:12px;color:var(--muted);flex:1;min-width:0}
 .ext-go{font-size:12.5px;font-weight:700;color:var(--accent);white-space:nowrap}
+.rp-person.lw{border-color:var(--series-1);background:rgba(42,120,214,.06)}
+.rp-person.lw b{color:var(--series-1)}

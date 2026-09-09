@@ -495,6 +495,16 @@ function rpRenderUnsent(d) {
         (p.未報告メモ ? '<span class="rp-memo">' + esc(p.未報告メモ) + '</span>' : '') + '</div>';
     }).join('') + '</div>';
   }
+  // ★LINE WORKS で受け取っている人（フォームに出ないので未提出には入れない）
+  var lw = box.LW || [];
+  if (lw.length) {
+    h += '<div class="rp-sub">LINE WORKS で受け取り（' + lw.length + '名）</div><div class="rp-people">' +
+      lw.map(function (p) {
+        return '<div class="rp-person lw"><b>' + esc(p.name) + '</b>' +
+          (p.店舗 ? '<span>' + esc(p.店舗) + '</span>' : '') + '</div>';
+      }).join('') + '</div>';
+  }
+
   var 済 = box.提出済み || [];
   if (済.length) {
     h += '<div class="rp-sub">出した人（' + 済.length + '名）</div><div class="rp-people">' +
