@@ -399,11 +399,13 @@ function rpInit() {
   rpLoadMonth();
 }
 
-/** 見ている日を n 日動かす */
+/** 見ている日を n 日動かす。
+ *  ★toISOString() は UTC で返すので、JSTの0時をそのまま渡すと**1日戻る**。
+ *    +9時間してから切り出すこと（2026-09-09に1回で2日戻る不具合を出した）。 */
 function rpShift(n) {
   var d = new Date(RP.date + 'T00:00:00+09:00');
   d.setDate(d.getDate() + n);
-  var s = d.toISOString().slice(0, 10);
+  var s = new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10);
   if (s > rpToday()) return;              // 先の日は見ない
   RP.date = s;
   rpLoadDay();
