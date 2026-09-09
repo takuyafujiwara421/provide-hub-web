@@ -977,6 +977,7 @@ function switchView(v, fromHash) {
   if (v === 'onboard') setTimeout(function () { if (!OB.data) obLoad(); }, 0);
   if (v === 'shoki')  setTimeout(function () { if (!SK.data) skLoad(false); }, 0);
   if (v === 'reports') setTimeout(function () { if (!RP.date) rpInit(); }, 0);
+  if (v === 'home')   setTimeout(function () { extRender(); }, 0);
   // ★ハッシュ由来の切り替えでは書き戻さない（戻る操作の履歴を壊してしまうため）
   if (!fromHash) setHash(v);
 }
@@ -2416,3 +2417,40 @@ $$('#skTabs .hb-tab').forEach(function (b) {
   var r = $('#skReload');
   if (r) r.addEventListener('click', function () { skLoad(true); });
 })();
+
+/* ============================================================
+ * よく使う外部の画面  2026-09-09
+ * ------------------------------------------------------------
+ * 拓矢さんの困りごと：
+ *   「交通費申請もアプリで保存したいんだけどWORKS以外だと開けないのなんとかして」
+ *
+ * ★なぜ開けないか
+ *   GASのウェブアプリは、**ブラウザがログイン中のGoogleアカウント**で開こうとする。
+ *   telekids で作った画面を、個人のGmailでログイン中のChromeから開くと
+ *   「現在、ファイルを開くことができません」になる。URLは誰でも開ける設定なのに、
+ *   ログインしていることが逆に邪魔をする。
+ *
+ * ★hub は正しい authuser を知っている
+ *   API を叩くときに 0→1→2→3 と試して、通った番号を覚えてある（AUTH_KEY）。
+ *   その番号を付けて開けば、同じアカウントで開くので弾かれない。
+ *
+ * ★ここに足せば「アプリの中から開く」形になり、ホーム画面に別のアイコンを
+ *   増やさなくて済む（拓矢さんの「アプリで保存したい」への答え）。
+ * ============================================================ */
+var EXT_LINKS = [
+  { name: '交通費の申請', note: '回数を入れてPDFを作る',
+    url: 'https://script.google.com/macros/s/AKfycbzPMoex467wNQT09b6ZtxnCKssvK0xqsOfnyVgYttBLqJFINMqDPXzq6VaJhclAWyk6OQ/exec' },
+];
+
+function extRender() {
+  var root = $('#extLinks');
+  if (!root) return;
+  var au = authNow();
+  root.innerHTML = EXT_LINKS.map(function (l) {
+    var u = l.url + (au ? (l.url.indexOf('?') >= 0 ? '&' : '?') + 'authuser=' + encodeURIComponent(au) : '');
+    return '<a class="ext-link" href="' + esc(u) + '" target="_blank" rel="noopener">' +
+      '<span class="ext-name">' + esc(l.name) + '</span>' +
+      '<span class="ext-note">' + esc(l.note) + '</span>' +
+      '<span class="ext-go">開く →</span></a>';
+  }).join('');
+}

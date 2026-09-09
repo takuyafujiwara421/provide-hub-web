@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=20260909093347">
+<link rel="stylesheet" href="style.css?v=20260909093823">
 </head>
 <body>
 
@@ -88,6 +88,15 @@
           <button class="btn-link" data-view="stores">店舗一覧 →</button>
           <span id="shiftLinks" class="shift-links"></span>
         </div>
+      </div>
+
+      <!-- ★よく使う外部の画面（2026-09-09）
+             GASのウェブアプリは、ブラウザが別のGoogleアカウントでログインしていると
+             「ファイルを開くことができません」で弾かれる。
+             hub は正しい authuser を既に知っているので、それを付けて開く。 -->
+      <div class="card">
+        <div class="card-head"><h2>よく使う画面</h2><span class="muted">hub から開くと確実に開きます</span></div>
+        <div id="extLinks" class="ext-links"></div>
       </div>
 
       <!-- ニュース＆トピックス -->
@@ -343,7 +352,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=20260909093347"></script>
-<script src="app.js?v=20260909093347"></script>
+<script src="charts.js?v=20260909093823"></script>
+<script src="app.js?v=20260909093823"></script>
 </body>
 </html>
