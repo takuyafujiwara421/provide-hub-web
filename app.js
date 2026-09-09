@@ -173,6 +173,7 @@ $('#loginForm').addEventListener('submit', function (ev) {
 /* ---------- 読み込み ---------- */
 function loadAll(fresh) {
   debutLoad(fresh);
+  noticeLoadUnsent();     // ★前日の日報が出ていない人（ホームのお知らせに出す）
   ['tasks', 'reports', 'ops', 'news'].forEach(function (sec) {
     api('hub', { section: sec, fresh: fresh ? 1 : '' })
       .then(function (r) {
@@ -1921,7 +1922,7 @@ function todoBind() {
  * ★どこかのタブを開かないと気づけない、では意味がない。
  *   どの画面にいても目に入るように、右上に件数を出す。
  * ========================================================================== */
-var NOTICE = { items: [] };
+var NOTICE = { items: [], unsent: [], unsentDate: '' };
 
 /** 集まったデータからお知らせを組み立てる。増やすときはここに足す */
 function noticeBuild() {
@@ -1954,8 +1955,90 @@ function noticeBuild() {
     });
   }
 
+  // ③ 前日の日報が確認できていない人（2026-09-09 拓矢さん指示）
+  //    ★ホームで毎日目に入るようにする。催促は人がやるので、名前が分かれば足りる
+  if (NOTICE.unsent && NOTICE.unsent.length) {
+    NOTICE.unsent.forEach(function (p) {
+      out.push({
+        kind: 'nippou',
+        title: p.name + ' さんの日報がまだです',
+        body: (NOTICE.unsentDate || '') + '　' + (p.店舗 || '') +
+              (p.未報告メモ ? '（' + p.未報告メモ + '）' : ''),
+        go: 'reports',
+      });
+    });
+  }
+
   NOTICE.items = out;
   noticeBell();
+  homeNotice();
+}
+
+/** ホームに常設で出す（ベルを押さなくても見える） */
+function homeNotice() {
+  var box = $('#homeNotice'), n = $('#homeNoticeN');
+  if (!box) return;
+  if (n) n.textContent = NOTICE.items.length ? NOTICE.items.length + '件' : '';
+  if (!NOTICE.items.length) {
+    box.innerHTML = '<div class="notice-empty">いまお知らせはありません</div>';
+    return;
+  }
+  box.innerHTML = NOTICE.items.map(function (it, i) {
+    return '<div class="notice-row" data-hnt="' + i + '">' +
+      '<div class="notice-t">' + esc(it.title) + '</div>' +
+      (it.body ? '<div class="notice-b">' + esc(it.body) + '</div>' : '') +
+    '</div>';
+  }).join('');
+  $$('#homeNotice .notice-row').forEach(function (r) {
+    r.onclick = function () { noticeGo(NOTICE.items[Number(r.getAttribute('data-hnt'))]); };
+  });
+}
+
+/** お知らせを押したときの移動先（ベルとホームで同じ動きにする） */
+function noticeGo(it) {
+  if (!it) return;
+  var box = $('#noticeBox');
+  if (box) box.hidden = true;
+  if (it.go === 'hanbai') {
+    switchView('hanbai');
+    HB.tab = it.tab || 'trainee';
+    HB.picked = null;
+    $$('#hbTabs .hb-tab').forEach(function (x) {
+      x.classList.toggle('active', x.getAttribute('data-hb') === HB.tab); });
+    if (HB.data) hbRender();
+    return;
+  }
+  if (it.go === 'reports') {
+    switchView('reports');
+    if (NOTICE.unsentDate) { RP.date = NOTICE.unsentDate; rpLoadDay(); }
+    else if (!RP.date) rpInit();
+    return;
+  }
+  switchView(it.go || 'home');
+}
+
+/**
+ * 前日の日報の提出状況を取りに行く。
+ * ★「前日」＝カレンダー上の前日。土日を挟むと出勤者がいないので、
+ *   出勤者が1人もいない日はさらに1日さかのぼる（最大4日）。
+ */
+function noticeLoadUnsent() {
+  var d = new Date(Date.now() + 9 * 3600000);
+  var tries = [];
+  for (var i = 1; i <= 4; i++) {
+    var x = new Date(d.getTime() - i * 86400000);
+    tries.push(x.toISOString().slice(0, 10));
+  }
+  (function step(k) {
+    if (k >= tries.length) return;
+    api('nippou.status', { date: tries[k] }, 120000).then(function (r) {
+      var 出勤 = ((r.初期設定 || {}).出勤 || []).length + ((r.出張販売 || {}).出勤 || []).length;
+      if (!出勤) return step(k + 1);            // その日は誰も出ていない＝もう1日さかのぼる
+      NOTICE.unsentDate = tries[k];
+      NOTICE.unsent = ((r.初期設定 || {}).未提出 || []).concat((r.出張販売 || {}).未提出 || []);
+      noticeBuild();
+    }).catch(function () { step(k + 1); });
+  })(0);
 }
 
 function noticeBell() {
@@ -1981,21 +2064,7 @@ function noticeRender() {
     '</div>';
   }).join('');
   $$('#noticeBody .notice-row').forEach(function (r) {
-    r.onclick = function () {
-      var it = NOTICE.items[Number(r.getAttribute('data-nt'))];
-      if (!it) return;
-      $('#noticeBox').hidden = true;
-      if (it.go === 'hanbai') {
-        switchView('hanbai');
-        HB.tab = it.tab || 'trainee';
-        HB.picked = null;
-        $$('#hbTabs .hb-tab').forEach(function (x) {
-          x.classList.toggle('active', x.getAttribute('data-hb') === HB.tab); });
-        if (HB.data) hbRender();
-      } else {
-        switchView(it.go || 'home');
-      }
-    };
+    r.onclick = function () { noticeGo(NOTICE.items[Number(r.getAttribute('data-nt'))]); };
   });
 }
 

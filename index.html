@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=20260909121047">
+<link rel="stylesheet" href="style.css?v=20260909121536">
 </head>
 <body>
 
@@ -60,6 +60,14 @@
     </div>
 
     <section class="view" id="view-home">
+
+      <!-- ★お知らせ（ホームでは常に出す。2026-09-09 拓矢さん指示）
+             ベルを押さないと気づけないと意味がないので、ホームの一番上に置く。
+             右上のベルは他のタブにいるとき用に残してある。 -->
+      <div class="card" id="homeNoticeCard">
+        <div class="card-head"><h2>お知らせ</h2><span class="muted" id="homeNoticeN"></span></div>
+        <div id="homeNotice"></div>
+      </div>
 
       <!-- 近日 初稼働のスタッフ（該当が無ければ丸ごと出さない） -->
       <div class="card" id="debutCard" hidden>
@@ -352,7 +360,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=20260909121047"></script>
-<script src="app.js?v=20260909121047"></script>
+<script src="charts.js?v=20260909121536"></script>
+<script src="app.js?v=20260909121536"></script>
 </body>
 </html>
