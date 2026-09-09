@@ -502,9 +502,13 @@ function rpRenderUnsent(d) {
       lw.map(function (p) {
         // ★本文が届いているかまで出す。「LINE WORKSで受け取る人」と
         //   「その日ちゃんと送った人」は別のことなので、色を分ける
-        return '<div class="rp-person ' + (p.本文あり ? 'lw' : 'warn') + '"><b>' + esc(p.name) + '</b>' +
+        // 本文あり=null は「記録を始める前の日」＝判定できない
+        var cls = (p.本文あり === null) ? 'lw' : (p.本文あり ? 'lw' : 'warn');
+        var memo = (p.本文あり === null) ? (p.メモ || '')
+                 : (p.本文あり ? '届いています ' + esc(p.受信時刻 || '') : 'まだ届いていません');
+        return '<div class="rp-person ' + cls + '"><b>' + esc(p.name) + '</b>' +
           (p.店舗 ? '<span>' + esc(p.店舗) + '</span>' : '') +
-          '<span class="rp-memo">' + (p.本文あり ? '届いています ' + esc(p.受信時刻 || '') : 'まだ届いていません') + '</span>' +
+          (memo ? '<span class="rp-memo">' + esc(memo) + '</span>' : '') +
           '</div>';
       }).join('') + '</div>';
   }
