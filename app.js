@@ -331,8 +331,8 @@ function kpi(label, value, unit, delta) {
 
 function renderReports() {
   var r = S.data.reports; if (!r) return;
-  $('#reportMonth').textContent = r.month + ' 時点';
-  $('#reportMonth2').textContent = r.month + ' 時点';
+  var rm = $('#reportMonth');
+  if (rm) rm.textContent = r.month + ' 時点';
 
   var n = r.nippou || {}, nk = r.nokisaki || {}, h = r.helper || {};
 
@@ -354,19 +354,9 @@ function renderReports() {
       kpi('記録数', h.records || 0, '件') +
     '</div></div>';
   $('#kpiRow').innerHTML = html;   // ホームの「今月の実績」は当月固定のまま
-  if (!S.data.period) loadPeriod(S.storeRange);
-
   drawCharts($('#homeCharts'), r, 2);
-  // ★実績画面には「推移」だけを置く。店舗別・スタッフ別は期間連動のもの(#periodTops)を
-  //   出しているので、当月固定の同じグラフを並べると『変わらない数字』に見えて紛らわしい
-  drawTrends($('#reportCharts'), r);
-
-  // 数値の内訳（色に頼らず読めるようにテーブルも出す）
-  var t = '<table class="tbl"><thead><tr><th>商材</th><th class="num">件数</th></tr></thead><tbody>';
-  var items = n.byItem || {};
-  Object.keys(items).forEach(function (k) { t += '<tr><td>' + esc(k) + '</td><td class="num">' + items[k] + '</td></tr>'; });
-  t += '</tbody></table>';
-  $('#reportTables').innerHTML = t;
+  // ★2026-09-09 実績タブは作り直した（RP.*）。ここからは触らない。
+  //   推移グラフはホームにあるので、実績タブでは店舗別の数字に絞っている。
 
 }
 
@@ -376,119 +366,194 @@ function renderReports() {
  * ★ホームの「今月の実績」は当月固定のまま（前月比と推移グラフはそこにある）。
  *   こちらは期間を選べるかわりに比較を持たない、と役割を分けている。
  */
-function loadPeriod(range) {
-  S.storeRange = range || S.storeRange;
-  $('#reportMonth2').textContent = '集計中…';
-  api('reports.period', { range: S.storeRange }, 90000)
-    .then(function (d) { S.data.period = d; renderPeriod(d); })
-    .catch(function (e) { $('#reportMonth2').textContent = e.message; });
-  loadStoreReport(S.storeRange, null);
+/* ============================================================
+ * 実績  2026-09-09 作り直し
+ * ------------------------------------------------------------
+ * 拓矢さんの依頼：
+ *   「実績の中で初期設定と、出張販売・店内の2つに分けて欲しい。
+ *     その中でも当日実績（矢印で前日も見れる）。出勤情報から日報提出してない人も反映。
+ *     もう1つは当月と前月実績を出せるように。店舗別でOK。
+ *     項目は初期設定は数字がある部分は全部出して」
+ *
+ * ★構成
+ *   ① 上の切替  … 初期設定 ／ 出張販売・店内
+ *   ② 当日の実績 … ← → で日を動かす（店舗別）
+ *   ③ 日報の提出状況 … その日の出勤者のうち、記録を出していない人
+ *   ④ 月の実績  … 当月／前月（店舗別）
+ *
+ * ★「出張販売・店内」は元データが2つ（軒先ダッシュボードと店内ヘルパー）ある。
+ *   数える単位が同じPIなので、この画面では**続けて2つの表**にして並べる。
+ *   1つの表に混ぜると、どちらの数字か分からなくなる。
+ * ============================================================ */
+var RP = {
+  kind: 'shoki',          // shoki / hanbai
+  date: null,             // 当日実績で見ている日
+  month: 'thismonth',
+};
+
+function rpToday() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); }
+
+function rpInit() {
+  if (!RP.date) RP.date = rpToday();
+  rpLoadDay();
+  rpLoadMonth();
 }
 
-function renderPeriod(d) {
-  var span = d.from === d.to ? d.from.slice(5).replace('-', '/')
-    : d.from.slice(5).replace('-', '/') + '〜' + d.to.slice(5).replace('-', '/');
-  $('#reportMonth2').textContent = d.label + '（' + span + '）';
-  $('#storeRangeEcho').textContent = d.label + '（' + span + '）';
-
-  var n = d.shoki || {}, nk = d.nokisaki || {}, h = d.helper || {};
-  $('#kpiRowFull').innerHTML =
-    '<div class="kpi-group"><div class="kpi-group-head">初期設定</div><div class="kpi-row">' +
-      kpi('件数', (n.total || 0).toLocaleString(), '件') +
-      kpi('稼働日数', n.days || 0, '日') +
-      kpi('店舗数', n.storeCount || 0, '店') +
-    '</div></div>' +
-    '<div class="kpi-group"><div class="kpi-group-head">出張販売／軒先</div><div class="kpi-row">' +
-      kpi('PI', nk.pi || 0, '件') +
-      kpi('声掛け', (nk.koe || 0).toLocaleString(), '件') +
-      kpi('着座率', nk.sitRate || 0, '%') +
-      kpi('成約率', nk.piRate || 0, '%') +
-      kpi('店舗数', nk.storeCount || 0, '店') +
-    '</div></div>' +
-    '<div class="kpi-group"><div class="kpi-group-head">店内ヘルパー</div><div class="kpi-row">' +
-      kpi('PI', h.pi || 0, '件') +
-      kpi('記録数', h.records || 0, '件') +
-      kpi('店舗数', h.storeCount || 0, '店') +
-    '</div></div>';
-
-  // 上位の店舗・スタッフもこの期間で
-  var root = $('#periodTops');
-  root.innerHTML = '';
-  function box() { var e = document.createElement('div'); e.className = 'chart-box'; root.appendChild(e); return e; }
-  if (n.topStores && n.topStores.length) {
-    Charts.bars(box(), { title: '店舗別 件数（初期設定）', note: d.label + ' ' + span, items: n.topStores });
-  }
-  if (n.topStaff && n.topStaff.length) {
-    Charts.bars(box(), { title: 'スタッフ別 件数（初期設定）', note: d.label + ' ' + span, items: n.topStaff });
-  }
-  if (nk.topStaff && nk.topStaff.length && nk.pi) {
-    Charts.bars(box(), { title: 'スタッフ別 PI（軒先）', note: d.label + ' ' + span, items: nk.topStaff });
-  }
+/** 見ている日を n 日動かす */
+function rpShift(n) {
+  var d = new Date(RP.date + 'T00:00:00+09:00');
+  d.setDate(d.getDate() + n);
+  var s = d.toISOString().slice(0, 10);
+  if (s > rpToday()) return;              // 先の日は見ない
+  RP.date = s;
+  rpLoadDay();
 }
 
-$$('#periodRange .seg-btn').forEach(function (b) {
-  b.addEventListener('click', function () {
-    $$('#periodRange .seg-btn').forEach(function (x) { x.classList.remove('active'); });
-    b.classList.add('active');
-    loadPeriod(b.dataset.range);
+/* ---------- ② 当日の実績 ---------- */
+function rpLoadDay() {
+  var lbl = $('#rpDate');
+  if (lbl) lbl.textContent = rpDateLabel(RP.date);
+  var nx = $('#rpNext');
+  if (nx) nx.disabled = (RP.date >= rpToday());
+  $('#rpDayBody').innerHTML = '<div class="task-sub">読み込み中…</div>';
+  $('#rpUnsent').innerHTML = '<div class="task-sub">読み込み中…</div>';
+
+  var kinds = (RP.kind === 'shoki') ? ['shoki'] : ['nokisaki', 'helper'];
+  Promise.all(kinds.map(function (k) {
+    return api('reports.stores', { range: 'day', date: RP.date, kind: k }, 90000)
+      .catch(function (e) { return { kind: k, error: e.message, stores: [], columns: [], totals: {} }; });
+  })).then(function (list) {
+    $('#rpDayBody').innerHTML = list.map(function (d) {
+      return rpStoreTable(d, kinds.length > 1);
+    }).join('');
   });
-});
 
-/* ---------- 店舗別の実績（区分ごとの項目） ---------- */
-function loadStoreReport(range, kind) {
-  S.storeRange = range || S.storeRange;
-  S.storeKind = kind || S.storeKind;
-  $('#storeRangeNote').textContent = '読み込み中…';
-  $('#storeReport').innerHTML = '';
-  api('reports.stores', { range: S.storeRange, kind: S.storeKind }, 90000)
-    .then(function (d) {
-      S.data.storeReport = d;
-      renderStoreReport(d);
-    })
-    .catch(function (e) { $('#storeRangeNote').textContent = e.message; });
+  api('nippou.status', { date: RP.date }, 120000)
+    .then(function (d) { rpRenderUnsent(d); })
+    .catch(function (e) { $('#rpUnsent').innerHTML = '<div class="task-sub">' + esc(e.message) + '</div>'; });
 }
 
-function renderStoreReport(d) {
-  var span = d.from === d.to ? d.from.slice(5).replace('-', '/')
-    : d.from.slice(5).replace('-', '/') + '〜' + d.to.slice(5).replace('-', '/');
-  $('#storeRangeNote').textContent =
-    d.kindLabel + '／' + d.label + '（' + span + '）／ ' + d.storeCount + '店舗' +
-    (d.errors && d.errors.length ? ' ※' + d.errors.join(' ') : '');
+function rpDateLabel(s) {
+  if (!s) return '';
+  var d = new Date(s + 'T00:00:00+09:00');
+  var w = ['日', '月', '火', '水', '木', '金', '土'][d.getDay()];
+  return s.slice(5).replace('-', '/') + '（' + w + '）' + (s === rpToday() ? '　今日' : '');
+}
 
-  if (!d.stores.length) { $('#storeReport').innerHTML = '<div class="task-sub">この期間の実績はありません</div>'; return; }
+/** 店舗別の表を1つ作る（当日でも月でも同じ形） */
+function rpStoreTable(d, withHead) {
+  if (d.error) return '<div class="task-sub">' + esc(d.kindLabel || d.kind) + '：' + esc(d.error) + '</div>';
+  var head = withHead ? '<div class="rp-sub">' + esc(d.kindLabel || '') + '</div>' : '';
+  if (!d.stores || !d.stores.length) {
+    return head + '<div class="task-sub">この日の実績はありません</div>';
+  }
+  // 数字が入っている項目だけ出す（軒先は商材が11列あり、空列だらけになる）
+  var cols = (d.columns || []).filter(function (c) { return d.totals[c.key]; });
+  if (!cols.length) cols = (d.columns || []).slice(0, 3);
 
-  // 値が入っていない項目の列は出さない（軒先は商材が11列あり、空列だらけになるため）
-  var cols = d.columns.filter(function (c) { return d.totals[c.key]; });
-  if (!cols.length) cols = d.columns.slice(0, 3);
-
-  var t = '<table class="tbl stack"><thead><tr><th>店舗</th>';
+  var t = head + '<div class="table-scroll"><table class="tbl stack"><thead><tr><th>店舗</th>';
   cols.forEach(function (c) { t += '<th class="num">' + esc(c.label) + '</th>'; });
-  t += '<th class="num">日数</th></tr></thead><tbody>';
-
+  t += '<th class="num">合計</th></tr></thead><tbody>';
   d.stores.forEach(function (s) {
     t += '<tr><td data-label="店舗">' + esc(s.name) + '</td>';
     cols.forEach(function (c) {
       var v = s.values[c.key] || 0;
-      // スマホの縦積みでは0の項目を出さない（項目が多いので、動いたものだけ並ぶ方が読める）
       t += '<td class="num' + (v ? '' : ' zero-cell') + '" data-label="' + esc(c.short || c.label) + '">' +
         (v ? v : '<span class="zero">－</span>') + '</td>';
     });
-    t += '<td class="num muted" data-label="稼働">' + s.days + '日</td></tr>';
+    t += '<td class="num"><b>' + (s.total || 0) + '</b></td></tr>';
   });
-
   t += '</tbody><tfoot><tr><td>合計</td>';
   cols.forEach(function (c) { t += '<td class="num">' + (d.totals[c.key] || 0) + '</td>'; });
-  t += '<td></td></tr></tfoot></table>';
-  $('#storeReport').innerHTML = t;
+  t += '<td class="num"><b>' + (d.grandTotal || 0) + '</b></td></tr></tfoot></table></div>';
+  return t;
 }
 
-$$('#storeKind .seg-btn').forEach(function (b) {
+/* ---------- ③ 日報の提出状況 ---------- */
+function rpRenderUnsent(d) {
+  var box = (RP.kind === 'shoki') ? (d.初期設定 || {}) : (d.出張販売 || {});
+  var 出勤 = box.出勤 || [], 未 = box.未提出 || [];
+  var echo = $('#rpUnsentEcho');
+  if (echo) {
+    echo.textContent = d.ok
+      ? ('出勤 ' + 出勤.length + '名／未提出 ' + 未.length + '名')
+      : (d.note || '');
+  }
+  if (!d.ok) { $('#rpUnsent').innerHTML = '<div class="task-sub">' + esc(d.note || '出勤表がありません') + '</div>'; return; }
+  if (!出勤.length) { $('#rpUnsent').innerHTML = '<div class="task-sub">この日の出勤者がいません</div>'; return; }
+
+  var h = '';
+  if (!未.length) {
+    h += '<div class="hb-ok">全員そろっています（' + 出勤.length + '名）</div>';
+  } else {
+    h += '<div class="hb-alert"><b>' + 未.length + '名</b> まだ出していません</div>';
+    h += '<div class="rp-people">' + 未.map(function (p) {
+      return '<div class="rp-person warn"><b>' + esc(p.name) + '</b>' +
+        (p.店舗 ? '<span>' + esc(p.店舗) + '</span>' : '') +
+        (p.未報告メモ ? '<span class="rp-memo">' + esc(p.未報告メモ) + '</span>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  var 済 = box.提出済み || [];
+  if (済.length) {
+    h += '<div class="rp-sub">出した人（' + 済.length + '名）</div><div class="rp-people">' +
+      済.map(function (p) {
+        return '<div class="rp-person"><b>' + esc(p.name) + '</b>' +
+          (p.店舗 ? '<span>' + esc(p.店舗) + '</span>' : '') +
+          '<span class="rp-num">' + p.合計 + '</span></div>';
+      }).join('') + '</div>';
+  }
+  var only = (d.日報のみ || []).filter(function (x) {
+    return (RP.kind === 'shoki') ? x.枠 === '初期設定' : x.枠 === '出張販売';
+  });
+  if (only.length) {
+    h += '<div class="rp-sub">出勤表に無いけれど記録がある人（' + only.length + '名）</div>' +
+      '<div class="rp-people">' + only.map(function (p) {
+        return '<div class="rp-person"><b>' + esc(p.name) + '</b>' +
+          (p.店舗 ? '<span>' + esc(p.店舗) + '</span>' : '') + '</div>';
+      }).join('') + '</div>';
+  }
+  $('#rpUnsent').innerHTML = h;
+}
+
+/* ---------- ④ 月の実績 ---------- */
+function rpLoadMonth() {
+  $('#rpMonthBody').innerHTML = '<div class="task-sub">読み込み中…</div>';
+  var kinds = (RP.kind === 'shoki') ? ['shoki'] : ['nokisaki', 'helper'];
+  Promise.all(kinds.map(function (k) {
+    return api('reports.stores', { range: RP.month, kind: k }, 90000)
+      .catch(function (e) { return { kind: k, error: e.message, stores: [], columns: [], totals: {} }; });
+  })).then(function (list) {
+    var span = list[0] && list[0].from
+      ? list[0].from.slice(5).replace('-', '/') + '〜' + list[0].to.slice(5).replace('-', '/') : '';
+    $('#rpMonthBody').innerHTML = '<div class="rp-span">' + esc(span) + '</div>' +
+      list.map(function (d) { return rpStoreTable(d, kinds.length > 1); }).join('');
+  });
+}
+
+/* ---------- 切替 ---------- */
+$$('#rpKind .seg-btn').forEach(function (b) {
   b.addEventListener('click', function () {
-    $$('#storeKind .seg-btn').forEach(function (x) { x.classList.remove('active'); });
+    $$('#rpKind .seg-btn').forEach(function (x) { x.classList.remove('active'); });
     b.classList.add('active');
-    loadStoreReport(null, b.dataset.kind);
+    RP.kind = b.dataset.rpkind;
+    $('#rpDayTitle').textContent = '当日の実績';
+    rpLoadDay(); rpLoadMonth();
   });
 });
+$$('#rpMonth .seg-btn').forEach(function (b) {
+  b.addEventListener('click', function () {
+    $$('#rpMonth .seg-btn').forEach(function (x) { x.classList.remove('active'); });
+    b.classList.add('active');
+    RP.month = b.dataset.rpmonth;
+    rpLoadMonth();
+  });
+});
+(function () {
+  var p = $('#rpPrev'), n = $('#rpNext'), t = $('#rpToday');
+  if (p) p.addEventListener('click', function () { rpShift(-1); });
+  if (n) n.addEventListener('click', function () { rpShift(1); });
+  if (t) t.addEventListener('click', function () { RP.date = rpToday(); rpLoadDay(); });
+})();
 
 /** 実績画面用。日別の推移だけ（期間の選択とは別軸なのでその旨を注記する） */
 function drawTrends(root, r) {
@@ -909,6 +974,7 @@ function switchView(v, fromHash) {
   if (v === 'hanbai') setTimeout(function () { if (!HB.data) hbLoad(); }, 0);
   if (v === 'onboard') setTimeout(function () { if (!OB.data) obLoad(); }, 0);
   if (v === 'shoki')  setTimeout(function () { if (!SK.data) skLoad(false); }, 0);
+  if (v === 'reports') setTimeout(function () { if (!RP.date) rpInit(); }, 0);
   // ★ハッシュ由来の切り替えでは書き戻さない（戻る操作の履歴を壊してしまうため）
   if (!fromHash) setHash(v);
 }

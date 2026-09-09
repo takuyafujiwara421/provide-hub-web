@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=202609090013">
+<link rel="stylesheet" href="style.css?v=202609090930">
 </head>
 <body>
 
@@ -130,37 +130,43 @@
 
     <!-- ---------- 実績 ---------- -->
     <section class="view hidden" id="view-reports">
+      <!-- ★2026-09-09 作り直し。拓矢さんの依頼で
+             「初期設定」と「出張販売・店内」に分け、それぞれ当日／当月／前月を見る形にした。 -->
+      <div class="seg seg-kind" id="rpKind">
+        <button class="seg-btn active" data-rpkind="shoki">初期設定</button>
+        <button class="seg-btn" data-rpkind="hanbai">出張販売・店内</button>
+      </div>
+
       <div class="card">
         <div class="card-head">
-          <h2>実績</h2>
-          <div class="seg" id="periodRange">
-            <button class="seg-btn" data-range="yesterday">前日</button>
-            <button class="seg-btn" data-range="lastweek">前週</button>
-            <button class="seg-btn" data-range="lastmonth">前月</button>
-            <button class="seg-btn active" data-range="thismonth">当月</button>
+          <h2 id="rpDayTitle">当日の実績</h2>
+          <div class="rp-nav">
+            <button class="rp-arrow" id="rpPrev" title="前の日">←</button>
+            <span class="rp-date" id="rpDate"></span>
+            <button class="rp-arrow" id="rpNext" title="次の日">→</button>
+            <button class="btn-link" id="rpToday">今日</button>
           </div>
-          <span class="muted" id="reportMonth2"></span>
         </div>
-        <div id="kpiRowFull" class="kpi-row"></div>
-        <div id="periodTops" class="chart-grid"></div>
-        <div id="reportCharts" class="chart-grid"></div>
+        <div id="rpDayBody"></div>
       </div>
+
+      <div class="card" id="rpUnsentCard">
+        <div class="card-head">
+          <h2>日報の提出状況</h2>
+          <span class="muted" id="rpUnsentEcho"></span>
+        </div>
+        <div id="rpUnsent"></div>
+      </div>
+
       <div class="card">
         <div class="card-head">
-          <h2>店舗別の実績</h2>
-          <span class="muted" id="storeRangeEcho"></span>
+          <h2>月の実績（店舗別）</h2>
+          <div class="seg" id="rpMonth">
+            <button class="seg-btn active" data-rpmonth="thismonth">当月</button>
+            <button class="seg-btn" data-rpmonth="lastmonth">前月</button>
+          </div>
         </div>
-        <div class="seg seg-kind" id="storeKind">
-          <button class="seg-btn active" data-kind="shoki">初期設定</button>
-          <button class="seg-btn" data-kind="nokisaki">出張販売／軒先</button>
-          <button class="seg-btn" data-kind="helper">店内ヘルパー</button>
-        </div>
-        <div class="muted" id="storeRangeNote"></div>
-        <div id="storeReport" class="table-scroll"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h2>数値の内訳</h2></div>
-        <div id="reportTables" class="table-scroll"></div>
+        <div id="rpMonthBody"></div>
       </div>
     </section>
 
@@ -337,7 +343,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=202609090013"></script>
-<script src="app.js?v=202609090013"></script>
+<script src="charts.js?v=202609090930"></script>
+<script src="app.js?v=202609090930"></script>
 </body>
 </html>
