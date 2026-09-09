@@ -500,8 +500,12 @@ function rpRenderUnsent(d) {
   if (lw.length) {
     h += '<div class="rp-sub">LINE WORKS で受け取り（' + lw.length + '名）</div><div class="rp-people">' +
       lw.map(function (p) {
-        return '<div class="rp-person lw"><b>' + esc(p.name) + '</b>' +
-          (p.店舗 ? '<span>' + esc(p.店舗) + '</span>' : '') + '</div>';
+        // ★本文が届いているかまで出す。「LINE WORKSで受け取る人」と
+        //   「その日ちゃんと送った人」は別のことなので、色を分ける
+        return '<div class="rp-person ' + (p.本文あり ? 'lw' : 'warn') + '"><b>' + esc(p.name) + '</b>' +
+          (p.店舗 ? '<span>' + esc(p.店舗) + '</span>' : '') +
+          '<span class="rp-memo">' + (p.本文あり ? '届いています ' + esc(p.受信時刻 || '') : 'まだ届いていません') + '</span>' +
+          '</div>';
       }).join('') + '</div>';
   }
 
