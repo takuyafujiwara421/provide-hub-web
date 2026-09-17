@@ -991,7 +991,7 @@ function switchView(v, fromHash) {
   // ★HB の実体はこのファイルの末尾で組み立てるので、起動直後（init から呼ばれる switchView）では
   //   まだ undefined。setTimeout でひと呼吸置き、ファイルを読み終えてから走らせる。
   //   （2026-09-04に「Cannot read properties of undefined」で読み込み中のまま止まった）
-  if (v === 'tasks')  setTimeout(function () { if (!TODO.data) todoLoad(false); }, 0);
+  if (v === 'tasks')  setTimeout(function () { todoLoad(false); }, 0);
   if (v === 'hanbai') setTimeout(function () { if (!HB.data) hbLoad(); }, 0);
   if (v === 'onboard') setTimeout(function () { if (!OB.data) obLoad(); }, 0);
   if (v === 'shoki')  setTimeout(function () { if (!SK.data) skLoad(false); }, 0);
@@ -1862,13 +1862,27 @@ function todoWhoOptions(sel) {
   }).join('');
 }
 
+/** ★2026-09-17 前回の中身をすぐ出す（拓矢さん「表示に時間がかかる」）。
+ *  サーバーの返事を待つ間も、前に見た一覧がそのまま出ているようにする。 */
+function todoCacheRead() {
+  try { return JSON.parse(localStorage.getItem('hub_todo_cache') || 'null'); } catch (e) { return null; }
+}
+function todoCacheWrite(d) {
+  try { localStorage.setItem('hub_todo_cache', JSON.stringify(d)); } catch (e) { }
+}
+
 function todoLoad(sync) {
   if (TODO.loading) return;
   TODO.loading = true;
   var b = $('#btnTodoSync');
   if (sync && b) { b.disabled = true; b.textContent = '取り込み中…'; }
+  if (!TODO.data) {
+    var c = todoCacheRead();
+    if (c) { TODO.data = c; renderTodo(); $('#todoSub').textContent = '読み込み中…'; }
+    else { $('#todoBody').innerHTML = '<div class="todo-empty muted">読み込み中…</div>'; }
+  }
   api('todo.get', { sync: sync ? 1 : '' })
-    .then(function (d) { TODO.data = d; renderTodo(); })
+    .then(function (d) { TODO.data = d; todoCacheWrite(d); renderTodo(); })
     .catch(function (e) { toast(e.message, true); })
     .then(function () {
       TODO.loading = false;
