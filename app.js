@@ -172,6 +172,9 @@ $('#loginForm').addEventListener('submit', function (ev) {
 
 /* ---------- 読み込み ---------- */
 function loadAll(fresh) {
+  // ★2026-09-17 タスク一覧は「hub」の集計（司令塔を読むので10〜20秒かかる）を待たずに、
+  //   先に自分で取りに行く。拓矢さん「表示に20秒かかる」への対応。
+  todoLoad(false);
   debutLoad(fresh);
   noticeLoadUnsent();     // ★前日の日報が出ていない人（ホームのお知らせに出す）
   ['tasks', 'reports', 'ops', 'news'].forEach(function (sec) {
