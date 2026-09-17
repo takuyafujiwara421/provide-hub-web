@@ -192,7 +192,7 @@ function logout() {
 }
 
 function renderSection(sec) {
-  if (sec === 'tasks') { renderMode(); renderTasks(); }
+  if (sec === 'tasks') { renderMode(); renderTasks(); renderTodo(); }
   if (sec === 'reports') { renderReports(); }
   if (sec === 'ops') { renderOps(); }
   if (sec === 'news') { renderNews(); }
@@ -1842,13 +1842,25 @@ function renderShiftLinks(links) {
 }
 
 /* ============================================================================
- * MTGで決まったこと（ToDo台帳）  2026-09-07
- * ★拓矢さん指示「タスクはMTGの議事録にある内容のみで。チェック入れたら消えるように、
- *   翌週のアジェンダにも完了したものは表示されないように」。
- *   台帳（スプレッドシート）が1つの事実で、ここと火曜のアジェンダが同じものを見る。
- *   チェックした直後だけは「今日やったこと」として残す（押し間違いを戻せるように）。
+ * タスク（MTG ToDo台帳）  2026-09-07 → 2026-09-17 作り直し
+ * ★拓矢さん指示（2026-09-17）
+ *   「自分で追加できる／担当を決められる／誰が完了にしたか残る／詳細と進捗を書ける／
+ *     一番下の『完了したタスク』から過去を見られる／詳細から削除できる」
+ *   台帳（スプレッドシート）が1つの事実。MTG議事録から拾ったものと手入力を同じ場所で持つ。
  * ========================================================================== */
-var TODO = { data: null, loading: false };
+var TODO = { data: null, loading: false, done: null, doneOpen: false, cur: null };
+
+/** 担当の候補。名簿が取れないときでも選べるように、ここに固定で持つ */
+var TODO_WHO = ['藤原 拓矢', '高橋 賢弥', '木村 朱里', '越田', '吉田 真理子', '山内社長'];
+
+function todoWhoOptions(sel) {
+  var cur = String(sel || '');
+  var list = TODO_WHO.slice();
+  if (cur && list.indexOf(cur) < 0) list.push(cur);   // 議事録から来た表記もそのまま残す
+  return '<option value="">担当：未定</option>' + list.map(function (w) {
+    return '<option value="' + esc(w) + '"' + (w === cur ? ' selected' : '') + '>' + esc(w) + '</option>';
+  }).join('');
+}
 
 function todoLoad(sync) {
   if (TODO.loading) return;
@@ -1865,14 +1877,17 @@ function todoLoad(sync) {
 }
 
 function todoRowHtml(t, done) {
+  var src = (t.source && t.source !== '手入力') ? esc(t.date) + ' の' + esc(t.source) : '手で追加';
   return '<div class="todo-row' + (done ? ' done' : '') + '" data-todo="' + esc(t.id) + '">' +
     '<button class="todo-check" aria-label="完了にする">' + (done ? '✓' : '') + '</button>' +
     '<div class="todo-main">' +
       '<div class="todo-title">' + esc(t.title) + '</div>' +
       (t.detail ? '<div class="todo-detail">' + esc(t.detail) + '</div>' : '') +
       '<div class="todo-meta">' +
-        (t.who ? '<span class="todo-who">' + esc(t.who) + '</span>' : '') +
-        '<span>' + esc(t.date) + ' のMTG</span>' +
+        (t.who ? '<span class="todo-who">' + esc(t.who) + '</span>' : '<span class="todo-who">担当未定</span>') +
+        '<span class="todo-src">' + src + '</span>' +
+        (done && t.doneBy ? '<span class="todo-doneby">' + esc(t.doneBy) + ' が完了</span>' : '') +
+        (done && t.doneAt ? '<span>' + esc(t.doneAt) + '</span>' : '') +
       '</div>' +
     '</div>' +
   '</div>';
@@ -1887,27 +1902,159 @@ function renderTodo() {
   var html = open.length
     ? open.map(function (t) { return todoRowHtml(t, false); }).join('')
     : '<div class="todo-empty">残っているものはありません。<br>' +
-      '<span class="muted">新しい議事録が出たら「議事録を取り込む」で追加されます。</span></div>';
+      '<span class="muted">「＋ 追加」で自分で足せます。MTGの議事録からは「議事録を取り込む」で入ります。</span></div>';
   if (just.length) {
     html += '<div class="todo-donehead">今日おわらせたもの（' + just.length + '）</div>' +
       just.map(function (t) { return todoRowHtml(t, true); }).join('');
   }
   $('#todoBody').innerHTML = html;
-  todoBind();
+  todoBind('#todoBody');
 }
 
-function todoBind() {
-  $$('#todoBody .todo-row').forEach(function (row) {
-    row.querySelector('.todo-check').onclick = function () {
-      var id = row.getAttribute('data-todo');
+/** 行の押し分け：チェック＝完了、それ以外＝詳細を開く */
+function todoBind(sel) {
+  $$(sel + ' .todo-row').forEach(function (row) {
+    var id = row.getAttribute('data-todo');
+    row.querySelector('.todo-check').onclick = function (ev) {
+      ev.stopPropagation();
       var wasDone = row.classList.contains('done');
       row.classList.add('busy');
       api('todo.done', { id: id, off: wasDone ? 1 : '' })
-        .then(function () { todoLoad(false); })
+        .then(function () { todoLoad(false); if (TODO.doneOpen) todoLoadDone(); })
         .catch(function (e) { row.classList.remove('busy'); toast(e.message, true); });
     };
+    row.onclick = function () { todoOpenDetail(id); };
   });
 }
+
+/* ---- 追加 ---- */
+(function () {
+  var form = $('#todoAddForm'), btn = $('#btnTodoAdd'), cancel = $('#taCancel');
+  if (!form || !btn) return;
+  $('#taWho').innerHTML = todoWhoOptions('');
+  btn.addEventListener('click', function () {
+    form.classList.toggle('hidden');
+    if (!form.classList.contains('hidden')) $('#taName').focus();
+  });
+  if (cancel) cancel.addEventListener('click', function () { form.classList.add('hidden'); });
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var name = $('#taName').value.trim();
+    if (!name) { toast('やることを入れてください', true); return; }
+    api('todo.add', { title: name, who: $('#taWho').value, detail: $('#taDetail').value.trim() })
+      .then(function () {
+        $('#taName').value = ''; $('#taDetail').value = '';
+        form.classList.add('hidden');
+        toast('追加しました');
+        todoLoad(false);
+      })
+      .catch(function (e) { toast(e.message, true); });
+  });
+})();
+
+/* ---- 完了したタスク（過去） ---- */
+function todoLoadDone() {
+  return api('todo.donelist', { limit: 200 }).then(function (d) {
+    TODO.done = d;
+    var items = d.items || [];
+    $('#todoDoneBody').innerHTML = items.length
+      ? '<div class="todo-donehead">完了したタスク（' + d['件数'] + '）</div>' +
+        items.map(function (t) { return todoRowHtml(t, true); }).join('')
+      : '<div class="todo-empty">まだ完了したタスクはありません。</div>';
+    todoBind('#todoDoneBody');
+  });
+}
+
+(function () {
+  var b = $('#btnTodoDone');
+  if (!b) return;
+  b.addEventListener('click', function () {
+    var body = $('#todoDoneBody');
+    TODO.doneOpen = body.classList.contains('hidden');
+    if (!TODO.doneOpen) { body.classList.add('hidden'); b.textContent = '✓ 完了したタスク'; return; }
+    b.disabled = true; b.textContent = '読み込み中…';
+    todoLoadDone().then(function () {
+      body.classList.remove('hidden');
+      b.textContent = '✓ 完了したタスクを閉じる';
+    }).catch(function (e) { toast(e.message, true); TODO.doneOpen = false; })
+      .then(function () { b.disabled = false; });
+  });
+})();
+
+/* ---- 詳細 ---- */
+function todoFind(id) {
+  var pools = [];
+  if (TODO.data) pools = pools.concat(TODO.data.open || [], TODO.data.justDone || []);
+  if (TODO.done) pools = pools.concat(TODO.done.items || []);
+  for (var i = 0; i < pools.length; i++) if (String(pools[i].id) === String(id)) return pools[i];
+  return null;
+}
+
+function todoOpenDetail(id) {
+  var t = todoFind(id);
+  if (!t) return;
+  TODO.cur = t;
+  $('#tdTitle').textContent = t.title;
+  $('#tdName').value = t.title || '';
+  $('#tdWho').innerHTML = todoWhoOptions(t.who);
+  $('#tdDetail').value = t.detail || '';
+  $('#tdMeta').textContent = t.done
+    ? '完了：' + (t.doneAt || '') + (t.doneBy ? '（' + t.doneBy + '）' : '')
+    : (t.source && t.source !== '手入力' ? t.date + ' の' + t.source : '手で追加');
+  todoRenderProgress(t.progress);
+  $('#todoDetail').classList.remove('hidden');
+}
+
+function todoRenderProgress(text) {
+  var lines = String(text || '').split('\n').filter(function (x) { return x.trim(); });
+  $('#tdProgList').innerHTML = lines.length
+    ? lines.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('')
+    : '<div class="muted">まだ進捗の記録はありません。</div>';
+}
+
+(function () {
+  var wrap = $('#todoDetail');
+  if (!wrap) return;
+  var close = function () { wrap.classList.add('hidden'); TODO.cur = null; };
+  $('#tdClose').addEventListener('click', close);
+  wrap.addEventListener('click', function (ev) { if (ev.target === wrap) close(); });
+
+  $('#tdSave').addEventListener('click', function () {
+    if (!TODO.cur) return;
+    var b = this; b.disabled = true;
+    api('todo.edit', { id: TODO.cur.id, title: $('#tdName').value.trim(),
+                       who: $('#tdWho').value, detail: $('#tdDetail').value })
+      .then(function () { toast('保存しました'); close(); todoLoad(false); if (TODO.doneOpen) todoLoadDone(); })
+      .catch(function (e) { toast(e.message, true); })
+      .then(function () { b.disabled = false; });
+  });
+
+  $('#tdProgAdd').addEventListener('click', function () {
+    if (!TODO.cur) return;
+    var box = $('#tdProgText'), text = box.value.trim();
+    if (!text) { toast('進捗の内容を入れてください', true); return; }
+    var b = this; b.disabled = true;
+    api('todo.progress', { id: TODO.cur.id, text: text })
+      .then(function (r) {
+        box.value = '';
+        TODO.cur.progress = r['進捗'] + (TODO.cur.progress ? '\n' + TODO.cur.progress : '');
+        todoRenderProgress(TODO.cur.progress);
+        toast('進捗を残しました');
+      })
+      .catch(function (e) { toast(e.message, true); })
+      .then(function () { b.disabled = false; });
+  });
+
+  $('#tdDelete').addEventListener('click', function () {
+    if (!TODO.cur) return;
+    if (!confirm('このタスクを削除します。元に戻せません。よろしいですか？')) return;
+    var b = this; b.disabled = true;
+    api('todo.delete', { id: TODO.cur.id })
+      .then(function () { toast('削除しました'); close(); todoLoad(false); if (TODO.doneOpen) todoLoadDone(); })
+      .catch(function (e) { toast(e.message, true); })
+      .then(function () { b.disabled = false; });
+  });
+})();
 
 (function () {
   var b = $('#btnTodoSync');

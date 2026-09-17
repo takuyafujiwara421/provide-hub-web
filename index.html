@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=20260909121536">
+<link rel="stylesheet" href="style.css?v=20260917233820">
 </head>
 <body>
 
@@ -130,18 +130,69 @@
 
     <!-- ---------- タスク ---------- -->
     <section class="view hidden" id="view-tasks">
-      <!-- ★2026-09-07 タスクは「MTGの議事録で決まったこと」だけにした（拓矢さん指示）。
-           司令塔の個人タスクはここには出さない。 -->
+      <!-- ★2026-09-17 作り直し（拓矢さん指示）。MTG議事録から拾ったToDoに加えて、
+           自分で追加／担当を決める／詳細と進捗を書く／完了者を残す／過去を見る／消す、まで出来るようにした。 -->
       <div class="card">
         <div class="card-head">
-          <h2>MTGで決まったこと</h2>
+          <h2>タスク</h2>
           <div class="card-actions">
             <span class="muted" id="todoSub"></span>
+            <button class="btn-ghost btn-sm" id="btnTodoAdd">＋ 追加</button>
             <button class="btn-primary btn-sm" id="btnTodoSync">議事録を取り込む</button>
           </div>
         </div>
+
+        <form id="todoAddForm" class="todo-add hidden">
+          <input type="text" id="taName" placeholder="やること（例：交通費ページの案内を送る）" autocomplete="off">
+          <div class="todo-add-row">
+            <select id="taWho">
+              <option value="">担当：未定</option>
+            </select>
+            <input type="text" id="taDetail" placeholder="詳細（任意）">
+          </div>
+          <div class="todo-add-btns">
+            <button type="button" class="btn-ghost btn-sm" id="taCancel">やめる</button>
+            <button type="submit" class="btn-primary btn-sm">追加する</button>
+          </div>
+        </form>
+
         <div id="todoBody" class="todo-list"></div>
+
+        <div class="todo-donebar">
+          <button class="btn-ghost btn-sm" id="btnTodoDone">✓ 完了したタスク</button>
+        </div>
+        <div id="todoDoneBody" class="todo-list hidden"></div>
+
         <div class="card-foot"><a class="btn-link" id="todoSheet" target="_blank" rel="noopener">台帳を開く →</a></div>
+      </div>
+
+      <!-- 詳細（1件） -->
+      <div id="todoDetail" class="td-wrap hidden">
+        <div class="td-panel">
+          <div class="td-head">
+            <div class="td-title" id="tdTitle"></div>
+            <button class="td-close" id="tdClose" aria-label="閉じる">×</button>
+          </div>
+          <div class="td-body">
+            <label class="td-label">やること</label>
+            <input type="text" id="tdName">
+            <label class="td-label">担当</label>
+            <select id="tdWho"></select>
+            <label class="td-label">詳細</label>
+            <textarea id="tdDetail" rows="4" placeholder="背景・決まったこと・気をつけることなど"></textarea>
+            <div class="td-save"><button class="btn-primary btn-sm" id="tdSave">保存する</button><span class="muted" id="tdMeta"></span></div>
+
+            <label class="td-label">進捗を書き足す</label>
+            <div class="td-prog-add">
+              <input type="text" id="tdProgText" placeholder="例：店舗に連絡済み。返事待ち">
+              <button class="btn-ghost btn-sm" id="tdProgAdd">追加</button>
+            </div>
+            <div id="tdProgList" class="td-prog"></div>
+          </div>
+          <div class="td-foot">
+            <button class="btn-danger btn-sm" id="tdDelete">このタスクを削除</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -360,7 +411,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=20260909121536"></script>
-<script src="app.js?v=20260909121536"></script>
+<script src="charts.js?v=20260917233820"></script>
+<script src="app.js?v=20260917233820"></script>
 </body>
 </html>
