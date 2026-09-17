@@ -1851,7 +1851,7 @@ function renderShiftLinks(links) {
 var TODO = { data: null, loading: false, done: null, doneOpen: false, cur: null };
 
 /** 担当の候補。名簿が取れないときでも選べるように、ここに固定で持つ */
-var TODO_WHO = ['藤原 拓矢', '高橋 賢弥', '木村 朱里', '越田', '吉田 真理子', '山内社長'];
+var TODO_WHO = ['藤原 拓矢', '高橋 賢弥', '木村 朱里', '越田 早咲', '吉田 真理子', '山内社長'];
 
 function todoWhoOptions(sel) {
   var cur = String(sel || '');
