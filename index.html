@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=20260921094858">
+<link rel="stylesheet" href="style.css?v=20260921094950">
 </head>
 <body>
 
@@ -73,6 +73,22 @@
       <div class="card" id="debutCard" hidden>
         <div class="card-head"><h2>まもなく初稼働</h2><span class="muted" id="debutSub"></span></div>
         <div id="debutBody" class="debut-list"></div>
+      </div>
+
+      <!-- ★2026-09-21 拓矢さん指示
+             「タスクはいまやっているルーティンワークと通常タスクの2つを横並び、お知らせの下」
+             ルーティンワーク（毎日決まってやること）は固定タスクの仕組みで出す。 -->
+      <div class="card" id="homeRoutineCard">
+        <div class="card-head"><h2>ルーティンワーク</h2><span class="muted" id="routineSub"></span></div>
+        <div id="routineBody"><div class="todo-empty muted">準備中（毎日の決まった仕事をここに出します）</div></div>
+      </div>
+
+      <div class="card" id="homeTodoCard">
+        <div class="card-head">
+          <h2>通常タスク</h2><span class="muted" id="homeTodoSub"></span>
+        </div>
+        <div id="homeTodoBody"></div>
+        <div class="card-foot"><button class="btn-link" data-view="tasks">タスクをすべて見る →</button></div>
       </div>
 
       <!-- 実績サマリ ★2026-09-21 拓矢さん指示「実績は初期設定と販売で分けてほしい」
@@ -427,7 +443,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=20260921094858"></script>
-<script src="app.js?v=20260921094858"></script>
+<script src="charts.js?v=20260921094950"></script>
+<script src="app.js?v=20260921094950"></script>
 </body>
 </html>

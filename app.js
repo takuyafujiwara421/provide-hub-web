@@ -1957,6 +1957,23 @@ function renderTodo() {
   }
   $('#todoBody').innerHTML = html;
   todoBind('#todoBody');
+
+  // ★2026-09-21 ホームにも同じものを出す（拓矢さん指示）。
+  //   ホームは「今なにが残っているか」だけ見たい場所なので、
+  //   完了ぶんは出さず、多いときは上から5件で切る。
+  var hb = $('#homeTodoBody');
+  if (hb) {
+    var HOME_MAX = 5;
+    var shown = open.slice(0, HOME_MAX);
+    hb.innerHTML = shown.length
+      ? shown.map(function (t) { return todoRowHtml(t, false); }).join('') +
+        (open.length > HOME_MAX
+          ? '<div class="todo-more muted">ほか ' + (open.length - HOME_MAX) + '件</div>' : '')
+      : '<div class="todo-empty">残っているものはありません。</div>';
+    todoBind('#homeTodoBody');
+    var hs = $('#homeTodoSub');
+    if (hs) hs.textContent = open.length ? '残り ' + open.length + '件' : 'すべて完了';
+  }
 }
 
 /** 行の押し分け：チェック＝完了、それ以外＝詳細を開く */
