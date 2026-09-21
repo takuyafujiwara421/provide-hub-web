@@ -199,6 +199,7 @@ function loadAll(fresh) {
   todoLoad(false);
   debutLoad(fresh);
   noticeLoadUnsent();     // ★前日の日報が出ていない人（ホームのお知らせに出す）
+  homeDayLoad();          // ★2026-09-21 ホームの実績は昨日の分
   extRender();            // ★2026-09-21 ここでも描く。switchView('home') を通らない
                           //   入り方（起動直後など）だと「よく使う画面」が空のままだったため
   ['tasks', 'reports', 'ops', 'news'].forEach(function (sec) {
@@ -364,33 +365,9 @@ function renderReports() {
 
   var n = r.nippou || {}, nk = r.nokisaki || {}, h = r.helper || {};
 
-  // ★2026-09-21 拓矢さん指示「実績は初期設定と販売で分けてほしい」。
-  //   数える単位が違う（初期設定＝件数／販売＝PI）ので、1枚に混ぜると
-  //   足し算できる数字に見えてしまう。カードごと分けた。
-  //   販売は「出張販売／軒先」と「店内ヘルパー」の2区分をまとめて1枚に入れる。
-  $('#kpiRow').innerHTML =
-    '<div class="kpi-row">' +
-      kpi('件数', (n.total || 0).toLocaleString(), '件', n.diffRate) +
-      kpi('稼働日数', n.days || 0, '日') +
-      kpi('店舗数', n.storeCount || 0, '店') +
-    '</div>';
-
-  var sales = $('#kpiRowSales');
-  if (sales) {
-    sales.innerHTML =
-      '<div class="kpi-group"><div class="kpi-group-head">出張販売／軒先</div><div class="kpi-row">' +
-        kpi('PI', nk.pi || 0, '件') +
-        kpi('着座率', nk.sitRate || 0, '%') +
-        kpi('成約率', nk.piRate || 0, '%') +
-      '</div></div>' +
-      '<div class="kpi-group"><div class="kpi-group-head">店内ヘルパー</div><div class="kpi-row">' +
-        kpi('PI', h.pi || 0, '件') +
-        kpi('記録数', h.records || 0, '件') +
-      '</div></div>';
-  }
-  var rms = $('#reportMonthSales');
-  if (rms) rms.textContent = r.month + ' 時点';
-
+  // ★2026-09-21 ホームの実績は「昨日の分」に変えた（拓矢さん指示）。
+  //   月の累計は実績タブにあるので、ホームでは homeDayLoad() が前日の数字を描く。
+  //   ここでは推移グラフだけ受け持つ。
   drawCharts($('#homeCharts'), r, 2);
   // ★2026-09-09 実績タブは作り直した（RP.*）。ここからは触らない。
   //   推移グラフはホームにあるので、実績タブでは店舗別の数字に絞っている。
@@ -506,6 +483,94 @@ function rpStoreTable(d, withHead) {
   cols.forEach(function (c) { t += '<td class="num">' + (d.totals[c.key] || 0) + '</td>'; });
   t += '<td class="num"><b>' + (d.grandTotal || 0) + '</b></td></tr></tfoot></table></div>';
   return t;
+}
+
+/* ============================================================
+ * ホームの「昨日の実績」  2026-09-21
+ * ------------------------------------------------------------
+ * 拓矢さん指示：
+ *   「初期設定とか販売の実績は昨日の分のみを表記するように。
+ *     提出がない人がいれば、その人と人数も出してほしい」
+ * ★なぜ昨日なのか
+ *   当日は集計が動いている途中で、数字が増え続ける。
+ *   朝に見て「昨日どうだったか」を確かめる画面なので、確定した前日を出す。
+ * ============================================================ */
+function homeYesterday() {
+  var d = new Date(Date.now() + 9 * 3600000);
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/** 未提出者のかたまりを作る。box は nippou.status の 初期設定／出張販売 */
+function homeUnsentHtml(box, ok, note) {
+  if (!ok) return '<div class="task-sub">' + esc(note || '出勤表がありません') + '</div>';
+  var 出勤 = (box && box.出勤) || [], 未 = (box && box.未提出) || [];
+  if (!出勤.length) return '<div class="task-sub">この日の出勤者はいません</div>';
+  if (!未.length) return '<div class="hb-ok">日報は全員そろっています（' + 出勤.length + '名）</div>';
+  return '<div class="hb-alert"><b>' + 未.length + '名</b> 日報がまだ出ていません</div>' +
+    '<div class="rp-people">' + 未.map(function (p) {
+      return '<div class="rp-person warn"><b>' + esc(p.name) + '</b>' +
+        (p.店舗 ? '<span>' + esc(p.店舗) + '</span>' : '') + '</div>';
+    }).join('') + '</div>';
+}
+
+/** 1区分ぶんの数字。件数の多い項目から3つまで出す */
+function homeDayKpi(d) {
+  if (!d || d.error) return '<div class="task-sub">' + esc((d && d.error) || '取れませんでした') + '</div>';
+  if (!d.stores || !d.stores.length) return '<div class="task-sub">この日の実績はありません</div>';
+  var cols = (d.columns || []).filter(function (c) { return d.totals[c.key]; })
+    .sort(function (a, b) { return (d.totals[b.key] || 0) - (d.totals[a.key] || 0); }).slice(0, 3);
+  return '<div class="kpi-row">' +
+    kpi('合計', (d.grandTotal || 0).toLocaleString(), '件') +
+    kpi('店舗数', d.stores.length, '店') +
+    cols.map(function (c) { return kpi(c.label, d.totals[c.key] || 0, '件'); }).join('') +
+    '</div>';
+}
+
+function homeDayLoad() {
+  var date = homeYesterday();
+  var lbl = rpDateLabel(date);
+  var a = $('#reportMonth'); if (a) a.textContent = lbl + ' の分';
+  var b = $('#reportMonthSales'); if (b) b.textContent = lbl + ' の分';
+  if ($('#kpiRow')) $('#kpiRow').innerHTML = '<div class="task-sub">読み込み中…</div>';
+  if ($('#kpiRowSales')) $('#kpiRowSales').innerHTML = '<div class="task-sub">読み込み中…</div>';
+
+  function get(kind) {
+    return api('reports.stores', { range: 'day', date: date, kind: kind }, 90000)
+      .catch(function (e) { return { kind: kind, error: e.message }; });
+  }
+
+  // 初期設定
+  Promise.all([get('shoki'), api('nippou.status', { date: date }, 120000).catch(function (e) {
+    return { ok: false, note: e.message };
+  })]).then(function (r) {
+    var box = r[0], st = r[1];
+    if ($('#kpiRow')) {
+      $('#kpiRow').innerHTML = homeDayKpi(box) +
+        homeUnsentHtml(st.初期設定, st.ok, st.note);
+    }
+    // 販売側の未提出も同じ返事から取れるので、ここで一緒に描く
+    window.__homeUnsentSales = homeUnsentHtml(st.出張販売, st.ok, st.note);
+    homeSalesPaint();
+  });
+
+  // 販売（出張販売／軒先 と 店内ヘルパー）
+  Promise.all([get('nokisaki'), get('helper')]).then(function (list) {
+    window.__homeSalesKpi = list.map(function (d) {
+      return '<div class="kpi-group"><div class="kpi-group-head">' +
+        esc(d.kindLabel || (d.kind === 'helper' ? '店内ヘルパー' : '出張販売／軒先')) +
+        '</div>' + homeDayKpi(d) + '</div>';
+    }).join('');
+    homeSalesPaint();
+  });
+}
+
+/** 数字と未提出は別々に返ってくるので、揃ったところから描き足す */
+function homeSalesPaint() {
+  var el = $('#kpiRowSales'); if (!el) return;
+  var kpiHtml = window.__homeSalesKpi;
+  if (kpiHtml === undefined) return;          // 数字がまだなら待つ
+  el.innerHTML = kpiHtml + (window.__homeUnsentSales || '');
 }
 
 /* ---------- ③ 日報の提出状況 ---------- */
