@@ -199,6 +199,8 @@ function loadAll(fresh) {
   todoLoad(false);
   debutLoad(fresh);
   noticeLoadUnsent();     // ★前日の日報が出ていない人（ホームのお知らせに出す）
+  extRender();            // ★2026-09-21 ここでも描く。switchView('home') を通らない
+                          //   入り方（起動直後など）だと「よく使う画面」が空のままだったため
   ['tasks', 'reports', 'ops', 'news'].forEach(function (sec) {
     api('hub', { section: sec, fresh: fresh ? 1 : '' })
       .then(function (r) {
