@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=20260921092031">
+<link rel="stylesheet" href="style.css?v=20260921094858">
 </head>
 <body>
 
@@ -75,15 +75,31 @@
         <div id="debutBody" class="debut-list"></div>
       </div>
 
-      <!-- 実績サマリ -->
+      <!-- 実績サマリ ★2026-09-21 拓矢さん指示「実績は初期設定と販売で分けてほしい」
+             数える単位が違う（初期設定＝件数／販売＝PI）ので、1枚に混ぜると
+             足し算できる数字に見えてしまう。カードごと分ける。 -->
       <div class="card" id="homeKpiCard">
         <div class="card-head">
-          <h2>今月の実績</h2>
+          <h2>初期設定の実績</h2>
           <span class="muted" id="reportMonth"></span>
         </div>
-        <div id="kpiRow" class="kpi-row"></div>
-        <div id="homeCharts" class="chart-grid"></div>
+        <div id="kpiRow"></div>
         <div class="card-foot"><button class="btn-link" data-view="reports">実績の詳細 →</button></div>
+      </div>
+
+      <div class="card" id="homeKpiSalesCard">
+        <div class="card-head">
+          <h2>販売の実績</h2>
+          <span class="muted" id="reportMonthSales"></span>
+        </div>
+        <div id="kpiRowSales"></div>
+        <div class="card-foot"><button class="btn-link" data-view="reports">実績の詳細 →</button></div>
+      </div>
+
+      <!-- グラフは1枚にまとめる（初期設定と販売の推移を並べて見たいため） -->
+      <div class="card" id="homeChartCard">
+        <div class="card-head"><h2>推移</h2><span class="muted">直近14日</span></div>
+        <div id="homeCharts" class="chart-grid"></div>
       </div>
 
       <!-- 店舗管理状況 -->
@@ -411,7 +427,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=20260921092031"></script>
-<script src="app.js?v=20260921092031"></script>
+<script src="charts.js?v=20260921094858"></script>
+<script src="app.js?v=20260921094858"></script>
 </body>
 </html>

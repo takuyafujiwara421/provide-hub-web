@@ -955,20 +955,28 @@ kbd {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
-  /* お知らせは見落とすと困るので、横いっぱいで一番上 */
-  #view-home > #homeNoticeCard { grid-column: 1 / -1; order: -2; }
-  /* 実績はグラフが潰れるので広く取る */
-  #view-home > #homeKpiCard { grid-column: 1 / -1; order: -1; }
-  /* ★実績を2番目に繰り上げる理由
-     並びをHTMLのまま（お知らせ→初稼働→実績）にすると、横いっぱいの実績が
-     初稼働の隣に入れず、初稼働の右が**まるごと空く**。
-     実績を先に出すと 初稼働｜店舗 / よく使う画面｜ニュース ときれいに埋まる。 */
+  /* ★並び順（2026-09-21 拓矢さん指示）
+       お知らせ
+       ルーティンワーク ｜ 通常タスク
+       初期設定の実績   ｜ 販売の実績
+       スタッフ
+       推移
+       まもなく初稼働 ｜ 店舗 ｜ よく使う画面 ｜ ニュース
+     HTMLの順番のままだと横いっぱいのカードが半分のカードの隣に入れず、
+     右側がまるごと空く。order で並べ直している。 */
+  #view-home > #homeNoticeCard  { grid-column: 1 / -1; order: -10; }
+  #view-home > #homeRoutineCard { order: -8; }
+  #view-home > #homeTodoCard    { order: -7; }
+  #view-home > #homeKpiCard     { order: -6; }
+  #view-home > #homeKpiSalesCard{ order: -5; }
+  #view-home > #homeStaffCard   { grid-column: 1 / -1; order: -4; }
+  #view-home > #homeChartCard   { grid-column: 1 / -1; order: -3; }
+  #view-home > #debutCard       { order: -2; }
 }
 
 @media (min-width: 1400px) {
   #view-home { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  /* 3列では実績が2枠。残る1枠に初稼働が入る */
-  #view-home > #homeKpiCard { grid-column: span 2; }
+  /* 3列でも、横いっぱいの指定（お知らせ・スタッフ・推移）はそのまま効く */
   /* 3列のときは、幅を少し広げないと1枚1枚が細くなりすぎる */
   .wrap { max-width: 1560px; }
 }

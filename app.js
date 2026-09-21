@@ -364,24 +364,33 @@ function renderReports() {
 
   var n = r.nippou || {}, nk = r.nokisaki || {}, h = r.helper || {};
 
-  // ★3区分は数える単位が違う（初期設定=件数／軒先・店内=PI）ので、
-  //   ひとまとまりに並べず見出しで分ける。混ぜると足し算できる数字に見えてしまう
-  var html =
-    '<div class="kpi-group"><div class="kpi-group-head">初期設定</div><div class="kpi-row">' +
+  // ★2026-09-21 拓矢さん指示「実績は初期設定と販売で分けてほしい」。
+  //   数える単位が違う（初期設定＝件数／販売＝PI）ので、1枚に混ぜると
+  //   足し算できる数字に見えてしまう。カードごと分けた。
+  //   販売は「出張販売／軒先」と「店内ヘルパー」の2区分をまとめて1枚に入れる。
+  $('#kpiRow').innerHTML =
+    '<div class="kpi-row">' +
       kpi('件数', (n.total || 0).toLocaleString(), '件', n.diffRate) +
       kpi('稼働日数', n.days || 0, '日') +
       kpi('店舗数', n.storeCount || 0, '店') +
-    '</div></div>' +
-    '<div class="kpi-group"><div class="kpi-group-head">出張販売／軒先</div><div class="kpi-row">' +
-      kpi('PI', nk.pi || 0, '件') +
-      kpi('着座率', nk.sitRate || 0, '%') +
-      kpi('成約率', nk.piRate || 0, '%') +
-    '</div></div>' +
-    '<div class="kpi-group"><div class="kpi-group-head">店内ヘルパー</div><div class="kpi-row">' +
-      kpi('PI', h.pi || 0, '件') +
-      kpi('記録数', h.records || 0, '件') +
-    '</div></div>';
-  $('#kpiRow').innerHTML = html;   // ホームの「今月の実績」は当月固定のまま
+    '</div>';
+
+  var sales = $('#kpiRowSales');
+  if (sales) {
+    sales.innerHTML =
+      '<div class="kpi-group"><div class="kpi-group-head">出張販売／軒先</div><div class="kpi-row">' +
+        kpi('PI', nk.pi || 0, '件') +
+        kpi('着座率', nk.sitRate || 0, '%') +
+        kpi('成約率', nk.piRate || 0, '%') +
+      '</div></div>' +
+      '<div class="kpi-group"><div class="kpi-group-head">店内ヘルパー</div><div class="kpi-row">' +
+        kpi('PI', h.pi || 0, '件') +
+        kpi('記録数', h.records || 0, '件') +
+      '</div></div>';
+  }
+  var rms = $('#reportMonthSales');
+  if (rms) rms.textContent = r.month + ' 時点';
+
   drawCharts($('#homeCharts'), r, 2);
   // ★2026-09-09 実績タブは作り直した（RP.*）。ここからは触らない。
   //   推移グラフはホームにあるので、実績タブでは店舗別の数字に絞っている。
