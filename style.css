@@ -938,3 +938,37 @@ kbd {
   border-radius: 8px; padding: 7px 13px; font-size: 13px; cursor: pointer; }
 .btn-danger:hover { background: var(--critical); color: #fff; }
 @media (min-width: 720px) { .td-wrap { align-items: center; } .td-panel { border-radius: 16px; } }
+
+/* ============================================================
+   ホームの横並び（2026-09-21 拓矢さん指示）
+   「PC・折りたたみスマホ・タブレットでは、Yahooのトップのように
+     縦だけでなく横にも項目を並べてほしい」
+
+   ★普通のスマホ（〜779px）はこれまでどおり縦1列のまま。触らない。
+   ★折りたたみを開いた幅・タブレット（780px〜）から2列。
+   ★広いPC（1400px〜）で3列。
+   高さの違うカードが噛み合うように align-items:start を入れている
+   （入れないと一番高いカードに引っ張られて余白が出る）。
+   ============================================================ */
+@media (min-width: 780px) {
+  #view-home {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  /* お知らせは見落とすと困るので、横いっぱいで一番上 */
+  #view-home > #homeNoticeCard { grid-column: 1 / -1; order: -2; }
+  /* 実績はグラフが潰れるので広く取る */
+  #view-home > #homeKpiCard { grid-column: 1 / -1; order: -1; }
+  /* ★実績を2番目に繰り上げる理由
+     並びをHTMLのまま（お知らせ→初稼働→実績）にすると、横いっぱいの実績が
+     初稼働の隣に入れず、初稼働の右が**まるごと空く**。
+     実績を先に出すと 初稼働｜店舗 / よく使う画面｜ニュース ときれいに埋まる。 */
+}
+
+@media (min-width: 1400px) {
+  #view-home { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* 3列では実績が2枠。残る1枠に初稼働が入る */
+  #view-home > #homeKpiCard { grid-column: span 2; }
+  /* 3列のときは、幅を少し広げないと1枚1枚が細くなりすぎる */
+  .wrap { max-width: 1560px; }
+}

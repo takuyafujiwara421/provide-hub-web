@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="provide hub">
-<link rel="stylesheet" href="style.css?v=20260917235405">
+<link rel="stylesheet" href="style.css?v=20260921090741">
 </head>
 <body>
 
@@ -76,7 +76,7 @@
       </div>
 
       <!-- 実績サマリ -->
-      <div class="card">
+      <div class="card" id="homeKpiCard">
         <div class="card-head">
           <h2>今月の実績</h2>
           <span class="muted" id="reportMonth"></span>
@@ -87,7 +87,7 @@
       </div>
 
       <!-- 店舗管理状況 -->
-      <div class="card">
+      <div class="card" id="homeStoreCard">
         <div class="card-head"><h2>店舗の稼働状況</h2><span class="muted" id="attnSummary"></span></div>
         <div id="firstVisitBanner"></div>
         <div id="channelSummary" class="ch-summary"></div>
@@ -102,13 +102,13 @@
              GASのウェブアプリは、ブラウザが別のGoogleアカウントでログインしていると
              「ファイルを開くことができません」で弾かれる。
              hub は正しい authuser を既に知っているので、それを付けて開く。 -->
-      <div class="card">
+      <div class="card" id="homeExtCard">
         <div class="card-head"><h2>よく使う画面</h2><span class="muted">hub から開くと確実に開きます</span></div>
         <div id="extLinks" class="ext-links"></div>
       </div>
 
       <!-- ニュース＆トピックス -->
-      <div class="card card-news">
+      <div class="card card-news" id="homeNewsCard">
         <div class="news-head">
           <h2>ニュース＆トピックス</h2>
           <div class="news-tabs" id="newsTabs">
@@ -411,7 +411,7 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<script src="charts.js?v=20260917235405"></script>
-<script src="app.js?v=20260917235405"></script>
+<script src="charts.js?v=20260921090741"></script>
+<script src="app.js?v=20260921090741"></script>
 </body>
 </html>
