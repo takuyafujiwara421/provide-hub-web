@@ -514,17 +514,32 @@ function homeUnsentHtml(box, ok, note) {
     }).join('') + '</div>';
 }
 
-/** 1区分ぶんの数字。件数の多い項目から3つまで出す */
+/** 1区分ぶんの数字。
+ *  ★声掛け・キャッチ・着座は「過程」の数字で、合計（grandTotal）には入っていない
+ *    （サーバー側が rankKeys から外している）。
+ *    これをKPIに混ぜると「合計2件なのに声掛け1,011件」と並んで誤解を生むので、
+ *    成果（PI・商材）と過程を分けて出す。 */
+var HOME_PROCESS_KEYS = ['koe', 'catch', 'chaku'];
+
 function homeDayKpi(d) {
   if (!d || d.error) return '<div class="task-sub">' + esc((d && d.error) || '取れませんでした') + '</div>';
   if (!d.stores || !d.stores.length) return '<div class="task-sub">この日の実績はありません</div>';
-  var cols = (d.columns || []).filter(function (c) { return d.totals[c.key]; })
+  var all = (d.columns || []).filter(function (c) { return d.totals[c.key]; });
+  var seika = all.filter(function (c) { return HOME_PROCESS_KEYS.indexOf(c.key) < 0; })
     .sort(function (a, b) { return (d.totals[b.key] || 0) - (d.totals[a.key] || 0); }).slice(0, 3);
-  return '<div class="kpi-row">' +
+  var katei = all.filter(function (c) { return HOME_PROCESS_KEYS.indexOf(c.key) >= 0; });
+
+  var h = '<div class="kpi-row">' +
     kpi('合計', (d.grandTotal || 0).toLocaleString(), '件') +
     kpi('店舗数', d.stores.length, '店') +
-    cols.map(function (c) { return kpi(c.label, d.totals[c.key] || 0, '件'); }).join('') +
+    seika.map(function (c) { return kpi(c.label, (d.totals[c.key] || 0).toLocaleString(), '件'); }).join('') +
     '</div>';
+  if (katei.length) {
+    h += '<div class="home-katei muted">' + katei.map(function (c) {
+      return esc(c.label) + ' ' + (d.totals[c.key] || 0).toLocaleString();
+    }).join('　／　') + '</div>';
+  }
+  return h;
 }
 
 function homeDayLoad() {

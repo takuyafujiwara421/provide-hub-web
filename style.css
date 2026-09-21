@@ -983,3 +983,6 @@ kbd {
 
 /* ホームの通常タスク（2026-09-21）。件数が多い日は上から5件で切る */
 .todo-more { font-size: 12px; padding: 8px 2px 0; }
+
+/* 昨日の実績：声掛け・キャッチ・着座（合計に含まれない過程の数字）2026-09-21 */
+.home-katei { font-size: 12px; margin: -6px 0 10px; }
