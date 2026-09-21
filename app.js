@@ -54,6 +54,13 @@ var TODO = { data: null, loading: false, done: null, doneOpen: false, cur: null 
 /** 担当の候補。名簿が取れないときでも選べるように、ここに固定で持つ */
 var TODO_WHO = ['藤原 拓矢', '高橋 賢弥', '木村 朱里', '越田 早咲', '吉田 真理子', '山内社長'];
 
+/* 「よく使う画面」のリンク。★これも init より前で代入すること（2026-09-21）。
+   後ろに書いていたため extRender が空配列を触り、カードが空のままだった。 */
+var EXT_LINKS = [
+  { name: '交通費の申請', note: '回数を入れてPDFを作る',
+    url: 'https://script.google.com/macros/s/AKfycbzPMoex467wNQT09b6ZtxnCKssvK0xqsOfnyVgYttBLqJFINMqDPXzq6VaJhclAWyk6OQ/exec' },
+];
+
 function authNow() {
   try { return localStorage.getItem(AUTH_KEY) || ''; } catch (e) { return ''; }
 }
@@ -2701,10 +2708,7 @@ $$('#skTabs .hb-tab').forEach(function (b) {
  * ★ここに足せば「アプリの中から開く」形になり、ホーム画面に別のアイコンを
  *   増やさなくて済む（拓矢さんの「アプリで保存したい」への答え）。
  * ============================================================ */
-var EXT_LINKS = [
-  { name: '交通費の申請', note: '回数を入れてPDFを作る',
-    url: 'https://script.google.com/macros/s/AKfycbzPMoex467wNQT09b6ZtxnCKssvK0xqsOfnyVgYttBLqJFINMqDPXzq6VaJhclAWyk6OQ/exec' },
-];
+/* EXT_LINKS の実体は先頭へ移した（init より前に要る）。2026-09-21 */
 
 function extRender() {
   var root = $('#extLinks');
