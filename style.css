@@ -996,7 +996,7 @@ kbd {
   padding: 11px 12px; border: 1px solid var(--accent); border-radius: 10px; background: var(--surface-1);
 }
 .rt-when { flex: 0 0 auto; font-size: 13px; font-weight: 700; color: var(--accent); min-width: 46px; padding-top: 1px; }
-.rt-item a, .rt-line a { color: var(--accent); text-decoration: underline; word-break: break-all; }
+.rt-item a, .rt-line a { color: var(--accent); text-decoration: underline; overflow-wrap: anywhere; }
 .rt-lines { display: flex; flex-direction: column; gap: 6px; }
 .rt-line { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 14px; line-height: 1.5; }
 .rt-kind { flex: 0 0 auto; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--plane); color: var(--text-2); }
