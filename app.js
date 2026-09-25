@@ -2854,7 +2854,7 @@ function routineLoad() {
 function linkify(s) {
   return esc(s).replace(/https?:\/\/[^\s<>"'）)」]+/g, function (u) {
     var label = u.replace(/^https?:\/\//, '');
-    if (/meet\.google\.com/.test(u)) label = 'Meet ' + label.replace('meet.google.com/', '');
+    if (/meet\.google\.com/.test(u)) label = label.replace('meet.google.com/', '');   // 前に「Meet」と書かれていることが多いので名前は足さない
     else if (/notion\.(so|com)/.test(u)) label = 'Notion';
     else if (label.length > 36) label = label.slice(0, 34) + '…';
     return '<a href="' + u + '" target="_blank" rel="noopener">' + label + '</a>';
@@ -2904,7 +2904,11 @@ function routineRender(d) {
     '<div class="rt-lines">' + now.map(rtRoutineHtml).join('') + '</div>';
 
   if (later.length) {
-    html += '<details class="rt-more"><summary>今週末・月末にやること（' + later.length + '）</summary>' +
+        // ★畳む見出しは、中に入っている区分だけで作る（週末の日に「今週末・月末」と出ると紛らわしいため）
+    var kinds = [];
+    later.forEach(function (r) { if (kinds.indexOf(r.kind) < 0) kinds.push(r.kind); });
+    var lbl = kinds.map(function (k) { return k === '週末' ? '今週末' : k; }).join('・');
+    html += '<details class="rt-more"><summary>' + esc(lbl) + 'にやること（' + later.length + '）</summary>' +
       '<div class="rt-lines">' + later.map(rtRoutineHtml).join('') + '</div>' +
       '<div class="muted rt-rule">週末＝金・土・日に表示／月末＝' + esc(d.monthEndFrom) + '〜' + esc(d.lastDay) + ' に表示</div>' +
       '</details>';
