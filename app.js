@@ -200,6 +200,7 @@ function loadAll(fresh) {
   debutLoad(fresh);
   noticeLoadUnsent();     // ★前日の日報が出ていない人（ホームのお知らせに出す）
   homeDayLoad();          // ★2026-09-21 ホームの実績は昨日の分
+  routineLoad();          // ★2026-09-25 ルーティンワークと今日の予定（単発）
   extRender();            // ★2026-09-21 ここでも描く。switchView('home') を通らない
                           //   入り方（起動直後など）だと「よく使う画面」が空のままだったため
   ['tasks', 'reports', 'ops', 'news'].forEach(function (sec) {
@@ -2829,4 +2830,90 @@ function extRender() {
       '<span class="ext-note">' + esc(l.note) + '</span>' +
       '<span class="ext-go">開く →</span></a>';
   }).join('');
+}
+
+
+/* ==========================================================================
+ * ルーティンワーク ＋ 今日の予定（単発） 2026-09-25
+ * ★拓矢さん指示：「毎日／毎週／月末の決まった仕事と、今日だけの予定（顔合わせ等）を
+ *   ホームに出したい。メモのURLは押せるように」
+ *   中身は provide-hub データの「ルーティン」「予定（単発）」タブ（GAS 24_ルーティン.js）。
+ *   ★今日やるものだけ大きく出す。週末（金土日）・月末（最後の3日）以外の日は、
+ *     該当ぶんを「今週末・月末」に畳んで小さく出す（毎回全部並べると読まなくなるため）。
+ *   ★過去の日付の予定はサーバ側で落としてくる。
+ * ========================================================================== */
+function routineLoad() {
+  var box = $('#routineBody'); if (!box) return;
+  api('home.items', {}, 60000).then(routineRender).catch(function (e) {
+    if (/UNAUTHORIZED|ログインが必要/.test(e.message)) return;
+    box.innerHTML = '<div class="todo-empty muted">読み込めませんでした（' + esc(e.message) + '）</div>';
+  });
+}
+
+/** 文中のURLを押せるリンクにする（先にエスケープしてから置き換える） */
+function linkify(s) {
+  return esc(s).replace(/https?:\/\/[^\s<>"'）)」]+/g, function (u) {
+    var label = u.replace(/^https?:\/\//, '');
+    if (/meet\.google\.com/.test(u)) label = 'Meet ' + label.replace('meet.google.com/', '');
+    else if (/notion\.(so|com)/.test(u)) label = 'Notion';
+    else if (label.length > 36) label = label.slice(0, 34) + '…';
+    return '<a href="' + u + '" target="_blank" rel="noopener">' + label + '</a>';
+  }).replace(/\n/g, '<br>');
+}
+
+function rtMd(ymd) {
+  var p = String(ymd).split('-'); if (p.length < 3) return ymd;
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  return (+p[1]) + '/' + (+p[2]) + '(' + '日月火水木金土'.charAt(d.getDay()) + ')';
+}
+
+function rtItemHtml(x, withDate) {
+  var urls = String(x.url || '').split(/[\s,]+/).filter(Boolean);
+  return '<div class="rt-item">' +
+    '<div class="rt-when">' + (withDate ? esc(rtMd(x.date)) + ' ' : '') + esc(x.time || '終日') + '</div>' +
+    '<div class="todo-main">' +
+      '<div class="todo-title">' + esc(x.title) + '</div>' +
+      (x.note ? '<div class="todo-detail">' + linkify(x.note) + '</div>' : '') +
+      (urls.length ? '<div class="todo-detail">' + urls.map(linkify).join(' ／ ') + '</div>' : '') +
+    '</div></div>';
+}
+
+function rtRoutineHtml(r) {
+  return '<div class="rt-line"><span class="rt-kind rt-' + esc(r.kind) + '">' + esc(r.kind) + '</span>' +
+    '<span class="rt-name">' + esc(r.name) + '</span>' +
+    (r.note ? '<span class="rt-note">' + linkify(r.note) + '</span>' : '') +
+    (r.url ? ' ' + linkify(r.url) : '') + '</div>';
+}
+
+function routineRender(d) {
+  var box = $('#routineBody'); if (!box || !d) return;
+  var rs = d.routines || [];
+  var isToday = function (r) {
+    return r.kind === '毎日' || (r.kind === '週末' && d.weekEnd) || (r.kind === '月末' && d.monthEnd);
+  };
+  var now = rs.filter(isToday), later = rs.filter(function (r) { return !isToday(r); });
+  var html = '';
+
+  if ((d.todayItems || []).length) {
+    html += '<div class="rt-head">今日の予定</div>' +
+      d.todayItems.map(function (x) { return rtItemHtml(x, false); }).join('');
+  }
+  html += '<div class="rt-head">今日やること' +
+    (d.weekEnd ? '<span class="muted">（週末ぶんを含む）</span>' : '') +
+    (d.monthEnd ? '<span class="muted">（月末ぶんを含む）</span>' : '') + '</div>' +
+    '<div class="rt-lines">' + now.map(rtRoutineHtml).join('') + '</div>';
+
+  if (later.length) {
+    html += '<details class="rt-more"><summary>今週末・月末にやること（' + later.length + '）</summary>' +
+      '<div class="rt-lines">' + later.map(rtRoutineHtml).join('') + '</div>' +
+      '<div class="muted rt-rule">週末＝金・土・日に表示／月末＝' + esc(d.monthEndFrom) + '〜' + esc(d.lastDay) + ' に表示</div>' +
+      '</details>';
+  }
+  if ((d.upcoming || []).length) {
+    html += '<details class="rt-more"><summary>この先の予定（' + d.upcoming.length + '）</summary>' +
+      d.upcoming.map(function (x) { return rtItemHtml(x, true); }).join('') + '</details>';
+  }
+  box.innerHTML = html;
+  var sub = $('#routineSub');
+  if (sub) sub.textContent = '今日 ' + ((d.todayItems || []).length + now.length) + '件';
 }

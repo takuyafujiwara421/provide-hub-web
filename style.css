@@ -986,3 +986,23 @@ kbd {
 
 /* 昨日の実績：声掛け・キャッチ・着座（合計に含まれない過程の数字）2026-09-21 */
 .home-katei { font-size: 12px; margin: -6px 0 10px; }
+
+/* ---- ルーティンワーク＋今日の予定（2026-09-25） ----
+   今日の予定は目立たせ、決まった仕事は1行ずつ。週末・月末以外の日は畳む */
+.rt-head { margin: 12px 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.rt-head:first-child { margin-top: 0; }
+.rt-item {
+  display: flex; gap: 11px; align-items: flex-start; margin-bottom: 8px;
+  padding: 11px 12px; border: 1px solid var(--accent); border-radius: 10px; background: var(--surface-1);
+}
+.rt-when { flex: 0 0 auto; font-size: 13px; font-weight: 700; color: var(--accent); min-width: 46px; padding-top: 1px; }
+.rt-item a, .rt-line a { color: var(--accent); text-decoration: underline; word-break: break-all; }
+.rt-lines { display: flex; flex-direction: column; gap: 6px; }
+.rt-line { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 14px; line-height: 1.5; }
+.rt-kind { flex: 0 0 auto; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--plane); color: var(--text-2); }
+.rt-name { font-weight: 600; }
+.rt-note { font-size: 12px; color: var(--muted); }
+.rt-more { margin-top: 12px; }
+.rt-more summary { cursor: pointer; font-size: 12.5px; color: var(--muted); padding: 4px 0; }
+.rt-more .rt-lines, .rt-more .rt-item { margin-top: 8px; }
+.rt-rule { font-size: 11px; margin-top: 6px; }
