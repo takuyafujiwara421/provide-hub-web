@@ -49,7 +49,7 @@ var AUTH_TRIES = ['', '0', '1', '2', '3'];   // '' ＝ 指定なし（ふつう�
  *   **ホームの中身が全部空になった**（2026-09-21 拓矢さん報告）。
  *   関数の定義は巻き上げられるが、var の代入は巻き上げられない。
  * ========================================================================== */
-var TODO = { data: null, loading: false, done: null, doneOpen: false, cur: null };
+var TODO = { data: null, loading: false, done: null, doneOpen: false, cur: null, pending: {} };
 
 /** 担当の候補。名簿が取れないときでも選べるように、ここに固定で持つ */
 var TODO_WHO = ['藤原 拓矢', '高橋 賢弥', '木村 朱里', '越田 早咲', '吉田 真理子', '山内社長'];
@@ -322,23 +322,23 @@ document.addEventListener('click', function (ev) {
   btn.classList.add('on');
   li.classList.add('done');
 
+  // ★2026-10-09 返事を待たずに消す（以前は 保存の返事＋0.85秒 待っていた）。失敗したら戻す。
+  //   司令塔→Notionへの反映は数秒かかる。取り直しただけでは「まだ進行中」で
+  //   返ってきて復活してしまうので、押したIDを覚えておいて画面から外し続ける。
+  S.doneIds[id] = 1;
+  var parent = li.parentNode, next = li.nextSibling;
+  li.style.transition = 'opacity .2s, transform .2s';
+  li.style.opacity = '0';
+  li.style.transform = 'translateX(12px)';
+  setTimeout(function () { if (li.parentNode) li.parentNode.removeChild(li); }, 200);
   api('tasks.done', { id: id }).then(function () {
     toast('完了にしました');
-    // ★司令塔→Notionへの反映は数秒かかる。取り直しただけでは「まだ進行中」で
-    //   返ってきて復活してしまうので、押したIDを覚えておいて画面から外し続ける。
-    S.doneIds[id] = 1;
-    setTimeout(function () {
-      li.style.transition = 'opacity .25s, transform .25s';
-      li.style.opacity = '0';
-      li.style.transform = 'translateX(12px)';
-      setTimeout(function () {
-        li.remove();
-        dropDoneTask(id);
-        renderTasks();
-        loadAll(true);
-      }, 250);
-    }, 600);
+    dropDoneTask(id);
+    renderTasks();
+    loadAll(true);
   }).catch(function (e) {
+    if (!li.parentNode && parent) parent.insertBefore(li, next && next.parentNode === parent ? next : null);
+    li.style.opacity = ''; li.style.transform = '';
     btn.disabled = false;
     btn.classList.remove('on');
     li.classList.remove('done');
@@ -1997,12 +1997,33 @@ function todoLoad(sync) {
     else { $('#todoBody').innerHTML = '<div class="todo-empty muted">読み込み中…</div>'; }
   }
   api('todo.get', { sync: sync ? 1 : '' })
-    .then(function (d) { TODO.data = d; todoCacheWrite(d); renderTodo(); })
+    .then(function (d) { TODO.data = d; todoApplyPending(); todoCacheWrite(TODO.data); renderTodo(); })
     .catch(function (e) { toast(e.message, true); })
     .then(function () {
       TODO.loading = false;
       if (b) { b.disabled = false; b.textContent = '議事録を取り込む'; }
     });
+}
+
+/** ★2026-10-09 押したけれどまだ保存中のチェックを、手元の一覧に当てはめる。
+ *  裏で取り直した一覧が古くても、押したものが復活しないようにする。 */
+function todoApplyPending() {
+  var d = TODO.data; if (!d) return;
+  var open = d.open || [], just = d.justDone || [];
+  Object.keys(TODO.pending).forEach(function (id) {
+    var toDone = TODO.pending[id];
+    var from = toDone ? open : just, to = toDone ? just : open;
+    for (var i = 0; i < from.length; i++) {
+      if (from[i].id !== id) continue;
+      var t = from.splice(i, 1)[0];
+      t.done = toDone;
+      t.doneBy = toDone ? ((S.user && S.user.name) || '') : '';
+      t.doneAt = toDone ? new Date().toISOString().slice(0, 10) : '';
+      if (toDone) to.unshift(t); else to.push(t);
+      break;
+    }
+  });
+  d.open = open; d.justDone = just; d['件数'] = open.length;
 }
 
 function todoRowHtml(t, done) {
@@ -2064,10 +2085,24 @@ function todoBind(sel) {
     row.querySelector('.todo-check').onclick = function (ev) {
       ev.stopPropagation();
       var wasDone = row.classList.contains('done');
-      row.classList.add('busy');
+      // ★2026-10-09 拓矢さん「チェックしてから消えるまでが長い」。
+      //   以前は「保存の返事（2〜4秒）→一覧の取り直し（さらに2〜4秒）」を待ってから消していた。
+      //   いまは押した瞬間に画面だけ先に動かし、保存は裏で行う。失敗したら元に戻す。
+      var before = TODO.data ? JSON.parse(JSON.stringify(TODO.data)) : null;
+      TODO.pending[id] = !wasDone;
+      row.classList.add(wasDone ? 'busy' : 'done', 'leaving');
+      setTimeout(function () { todoApplyPending(); renderTodo(); }, 180);
       api('todo.done', { id: id, off: wasDone ? 1 : '' })
-        .then(function () { todoLoad(false); if (TODO.doneOpen) todoLoadDone(); })
-        .catch(function (e) { row.classList.remove('busy'); toast(e.message, true); });
+        .then(function () {
+          delete TODO.pending[id];
+          if (TODO.data) todoCacheWrite(TODO.data);
+          if (TODO.doneOpen) todoLoadDone();
+        })
+        .catch(function (e) {
+          delete TODO.pending[id];
+          if (before) { TODO.data = before; renderTodo(); }
+          toast('保存できませんでした：' + e.message, true);
+        });
     };
     row.onclick = function () { todoOpenDetail(id); };
   });

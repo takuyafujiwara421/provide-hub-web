@@ -670,6 +670,7 @@ kbd {
   background: var(--surface-1);
 }
 .todo-row.busy { opacity: .5; }
+.todo-row.leaving { opacity: 0; transform: translateX(12px); transition: opacity .18s, transform .18s; }
 .todo-check {
   flex: 0 0 auto; width: 24px; height: 24px; margin-top: 1px;
   border: 2px solid var(--border); border-radius: 7px; background: none;
